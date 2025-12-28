@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ course.code }} - {{ course.name }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>{{ course.code }} - {{ course.name }}</h1>
+<p><strong>Instructor:</strong> {{ course.teacher.get_full_name|default:"Not assigned" }}</p>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+    <!-- Section 1: Assessments & Grades -->
+    <div>
+        <h2>Assessments & Grades</h2>
+        {% if assessments_list %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Type</th>
+                    <th>Weight</th>
+                    <th>Your Score</th>
+                    <th>Letter Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assessment_info in assessments_list %}
+                <tr>
+                    <td>{{ assessment_info.assessment.name }}</td>
+                    <td>{{ assessment_info.assessment.get_assessment_type_display }}</td>
+                    <td>{{ assessment_info.weight }}%</td>
+                    <td>
+                        {% if assessment_info.score is not None %}
+                        {{ assessment_info.score }}
+                        {% else %}
+                        <span style="color: #999;">Not graded</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if assessment_info.letter_grade %}
+                        {{ assessment_info.letter_grade }}
+                        {% else %}
+                        <span style="color: #999;">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if course_data.total_grade is not None %}
+        <div style="margin-top: 1.5rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px;">
+            <h3>Course Total Grade</h3>
+            <p><strong>Total:</strong> {{ course_data.total_grade|floatformat:2 }}%</p>
+            <p><strong>Letter Grade:</strong> {{ course_data.letter_grade }}</p>
+        </div>
+        {% endif %}
+        {% else %}
+        <p>No assessments defined for this course yet.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Section 2: LO Performance Summary -->
+    <div>
+        <h2>LO Performance Summary</h2>
+        {% if course_data.lo_achievements %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Learning Outcome</th>
+                    <th>Final LO Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lo_code, achievement in course_data.lo_achievements.items %}
+                <tr>
+                    <td><strong>{{ lo_code }}</strong></td>
+                    <td>{{ achievement|floatformat:2 }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No Learning Outcomes defined for this course, or LO performance data is not available yet.</p>
+        {% endif %}
+    </div>
+</div>
+
+<a href="{% url 'student_my_courses' %}" class="btn" style="margin-top: 2rem;">Back to My Courses</a>
+{% endblock %}
+

@@ -28,21 +28,72 @@ def student_dashboard(request):
 
 @student_required
 def student_my_courses(request):
-    """Student's enrolled courses with grades (if available)."""
-    enrollments = Enrollment.objects.filter(student=request.user).select_related('course')
-    courses_data = []
+    """Student's enrolled courses - list view."""
+    enrollments = Enrollment.objects.filter(student=request.user).select_related('course', 'course__teacher')
     
+    # Get basic info for each course
+    courses_list = []
     for enrollment in enrollments:
         course = enrollment.course
-        # Get course data including grades
-        course_data = get_student_course_data(request.user, course)
+        # Check if there are any grades
+        from assessments.models import AssessmentScore, Assessment
+        has_grades = AssessmentScore.objects.filter(
+            student=request.user,
+            assessment__course=course
+        ).exists()
         
-        # Only show course if there are any assessment scores
-        if course_data['assessments'] or course_data['total_grade'] is not None:
-            courses_data.append(course_data)
+        courses_list.append({
+            'course': course,
+            'enrollment': enrollment,
+            'has_grades': has_grades,
+        })
     
     return render(request, 'student/my_courses.html', {
-        'courses_data': courses_data,
+        'courses_list': courses_list,
+    })
+
+
+@student_required
+def student_course_detail(request, course_id):
+    """Student's detailed view of a specific course."""
+    course = get_object_or_404(Course, id=course_id)
+    
+    # Verify student is enrolled
+    enrollment = Enrollment.objects.filter(student=request.user, course=course).first()
+    if not enrollment:
+        messages.error(request, 'You are not enrolled in this course.')
+        return redirect('student_my_courses')
+    
+    # Get comprehensive course data
+    course_data = get_student_course_data(request.user, course)
+    
+    # Get all assessments (even without scores) to show structure
+    from assessments.models import Assessment
+    all_assessments = Assessment.objects.filter(course=course).order_by('created_at')
+    
+    # Create assessment list with scores and weights
+    assessments_list = []
+    for assessment in all_assessments:
+        assessment_info = {
+            'assessment': assessment,
+            'score': None,
+            'letter_grade': None,
+            'weight': assessment.weight_percentage,
+        }
+        # Try to get student's score
+        try:
+            from assessments.models import AssessmentScore
+            score_obj = AssessmentScore.objects.get(assessment=assessment, student=request.user)
+            assessment_info['score'] = score_obj.score
+            assessment_info['letter_grade'] = score_obj.letter_grade
+        except AssessmentScore.DoesNotExist:
+            pass
+        assessments_list.append(assessment_info)
+    
+    return render(request, 'student/course_detail.html', {
+        'course': course,
+        'course_data': course_data,
+        'assessments_list': assessments_list,
     })
 
 
@@ -123,6 +174,33 @@ def teacher_students(request):
     
     return render(request, 'teacher/students.html', {
         'courses_with_students': courses_with_students,
+    })
+
+
+@teacher_required
+def teacher_student_profile(request, student_id):
+    """Teacher views student profile - only courses taught by this teacher."""
+    from accounts.models import User
+    from assessments.utils import get_student_course_data
+    
+    student = get_object_or_404(User, id=student_id, role='student')
+    
+    # Get only courses where this teacher is the instructor and student is enrolled
+    enrollments = Enrollment.objects.filter(
+        student=student,
+        course__teacher=request.user
+    ).select_related('course', 'course__teacher')
+    
+    # Get course data for each enrollment
+    courses_data = []
+    for enrollment in enrollments:
+        course = enrollment.course
+        course_data = get_student_course_data(student, course)
+        courses_data.append(course_data)
+    
+    return render(request, 'teacher/student_profile.html', {
+        'student': student,
+        'courses_data': courses_data,
     })
 
 

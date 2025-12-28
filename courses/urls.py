@@ -5,12 +5,14 @@ urlpatterns = [
     # Student views
     path('student/', views.student_dashboard, name='student_dashboard'),
     path('student/courses/', views.student_my_courses, name='student_my_courses'),
+    path('student/courses/<int:course_id>/', views.student_course_detail, name='student_course_detail'),
     
     # Teacher views
     path('teacher/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/courses/', views.teacher_courses, name='teacher_courses'),
     path('teacher/courses/<int:course_id>/los/', views.teacher_course_los, name='teacher_course_los'),
     path('teacher/students/', views.teacher_students, name='teacher_students'),
+    path('teacher/students/<int:student_id>/profile/', views.teacher_student_profile, name='teacher_student_profile'),
     
     # Department Head views
     path('department-head/', views.department_head_dashboard, name='department_head_dashboard'),

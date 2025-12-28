@@ -24,6 +24,7 @@
                     <td>{{ enrollment.student.get_full_name }}</td>
                     <td>{{ enrollment.student.email }}</td>
                     <td>
+                        <a href="{% url 'teacher_student_profile' enrollment.student.id %}" class="btn">View Profile</a>
                         <a href="{% url 'enter_scores' item.course.id %}" class="btn">Enter Scores</a>
                     </td>
                 </tr>
