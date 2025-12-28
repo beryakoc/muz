@@ -10,14 +10,19 @@ from assessments.utils import get_student_course_data
 
 @student_required
 def student_dashboard(request):
-    """Student dashboard with welcome message, calendar, and announcements."""
+    """Student dashboard with welcome message, calendar, announcements, and assigned courses."""
     calendar_events = AcademicCalendar.objects.all()[:10]
     announcements = Announcement.objects.filter(is_active=True)[:10]
+    
+    # Get courses assigned to this student
+    enrollments = Enrollment.objects.filter(student=request.user).select_related('course', 'course__teacher')
+    assigned_courses = [enrollment.course for enrollment in enrollments]
     
     return render(request, 'student/dashboard.html', {
         'user': request.user,
         'calendar_events': calendar_events,
         'announcements': announcements,
+        'assigned_courses': assigned_courses,
     })
 
 
@@ -43,14 +48,25 @@ def student_my_courses(request):
 
 @teacher_required
 def teacher_dashboard(request):
-    """Teacher dashboard with welcome message, calendar, and announcements."""
+    """Teacher dashboard with welcome message, calendar, announcements, and assigned students."""
     calendar_events = AcademicCalendar.objects.all()[:10]
     announcements = Announcement.objects.filter(is_active=True)[:10]
+    
+    # Get courses taught by this teacher with enrolled students
+    courses = Course.objects.filter(teacher=request.user).prefetch_related('enrollments__student')
+    courses_with_students = []
+    for course in courses:
+        enrollments = Enrollment.objects.filter(course=course).select_related('student')
+        courses_with_students.append({
+            'course': course,
+            'students': [enrollment.student for enrollment in enrollments]
+        })
     
     return render(request, 'teacher/dashboard.html', {
         'user': request.user,
         'calendar_events': calendar_events,
         'announcements': announcements,
+        'courses_with_students': courses_with_students,
     })
 
 
@@ -213,6 +229,61 @@ def manage_courses(request):
     return render(request, 'department_head/courses.html', {
         'courses': courses,
         'teachers': teachers,
+    })
+
+
+@department_head_required
+def assign_students(request):
+    """Department Head assigns students to courses."""
+    students = User.objects.filter(role='student')
+    courses = Course.objects.all()
+    enrollments = Enrollment.objects.all().select_related('student', 'course')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'assign':
+            student_id = request.POST.get('student_id')
+            course_id = request.POST.get('course_id')
+            
+            try:
+                student = User.objects.get(id=student_id, role='student')
+                course = Course.objects.get(id=course_id)
+                
+                # Check if enrollment already exists
+                enrollment, created = Enrollment.objects.get_or_create(
+                    student=student,
+                    course=course
+                )
+                
+                if created:
+                    messages.success(request, f'Student {student.get_full_name()} assigned to {course.code} successfully.')
+                else:
+                    messages.info(request, f'Student {student.get_full_name()} is already assigned to {course.code}.')
+            except User.DoesNotExist:
+                messages.error(request, 'Student not found.')
+            except Course.DoesNotExist:
+                messages.error(request, 'Course not found.')
+            except Exception as e:
+                messages.error(request, f'Error assigning student: {str(e)}')
+        
+        elif action == 'remove':
+            enrollment_id = request.POST.get('enrollment_id')
+            try:
+                enrollment = Enrollment.objects.get(id=enrollment_id)
+                student_name = enrollment.student.get_full_name()
+                course_code = enrollment.course.code
+                enrollment.delete()
+                messages.success(request, f'Student {student_name} removed from {course_code} successfully.')
+            except Enrollment.DoesNotExist:
+                messages.error(request, 'Enrollment not found.')
+        
+        return redirect('assign_students')
+    
+    return render(request, 'department_head/assign_students.html', {
+        'students': students,
+        'courses': courses,
+        'enrollments': enrollments,
     })
 
 

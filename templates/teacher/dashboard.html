@@ -47,6 +47,29 @@
         {% endif %}
     </div>
 </div>
+
+<div style="margin-top: 2rem;">
+    <h2>My Courses and Assigned Students</h2>
+    {% if courses_with_students %}
+        {% for item in courses_with_students %}
+        <div style="margin-bottom: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+            <h3>{{ item.course.code }} - {{ item.course.name }}</h3>
+            {% if item.students %}
+            <p><strong>Assigned Students ({{ item.students|length }}):</strong></p>
+            <ul>
+                {% for student in item.students %}
+                <li>{{ student.get_full_name }} ({{ student.email }})</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p>No students assigned to this course yet.</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>You are not assigned to any courses yet.</p>
+    {% endif %}
+</div>
 {% endblock %}
 
 

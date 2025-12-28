@@ -47,6 +47,32 @@
         {% endif %}
     </div>
 </div>
+
+<div style="margin-top: 2rem;">
+    <h2>My Assigned Courses</h2>
+    {% if assigned_courses %}
+    <table>
+        <thead>
+            <tr>
+                <th>Course Code</th>
+                <th>Course Name</th>
+                <th>Instructor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for course in assigned_courses %}
+            <tr>
+                <td>{{ course.code }}</td>
+                <td>{{ course.name }}</td>
+                <td>{{ course.teacher.get_full_name|default:"Not assigned" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>You are not assigned to any courses yet.</p>
+    {% endif %}
+</div>
 {% endblock %}
 
 
