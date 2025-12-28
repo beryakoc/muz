@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}My Students - University SIS{% endblock %}
+
+{% block content %}
+<h1>My Students</h1>
+
+{% if courses_with_students %}
+    {% for item in courses_with_students %}
+    <div style="margin-bottom: 2rem;">
+        <h2>{{ item.course.code }} - {{ item.course.name }}</h2>
+        {% if item.enrollments %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for enrollment in item.enrollments %}
+                <tr>
+                    <td>{{ enrollment.student.get_full_name }}</td>
+                    <td>{{ enrollment.student.email }}</td>
+                    <td>
+                        <a href="{% url 'enter_scores' item.course.id %}" class="btn">Enter Scores</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No students enrolled in this course.</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+<p>You are not assigned to any courses with enrolled students.</p>
+{% endif %}
+{% endblock %}
+
+

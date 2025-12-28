@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}My Courses - University SIS{% endblock %}
+
+{% block content %}
+<h1>My Courses</h1>
+
+{% if courses_data %}
+    {% for course_data in courses_data %}
+    <div style="margin-bottom: 3rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+        <h2>{{ course_data.course.code }} - {{ course_data.course.name }}</h2>
+        <p><strong>Instructor:</strong> {{ course_data.course.teacher.get_full_name|default:"Not assigned" }}</p>
+        
+        {% if course_data.assessments %}
+        <h3 style="margin-top: 1.5rem;">Assessments</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Score</th>
+                    <th>Letter Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assessment_data in course_data.assessments %}
+                <tr>
+                    <td>{{ assessment_data.assessment.name }}</td>
+                    <td>{{ assessment_data.score }}</td>
+                    <td>{{ assessment_data.letter_grade|default:"-" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+        
+        {% if course_data.total_grade is not None %}
+        <div style="margin-top: 1.5rem;">
+            <h3>Course Grade</h3>
+            <p><strong>Total Grade:</strong> {{ course_data.total_grade|floatformat:2 }}%</p>
+            <p><strong>Letter Grade:</strong> {{ course_data.letter_grade }}</p>
+        </div>
+        {% endif %}
+        
+        {% if course_data.lo_achievements %}
+        <div style="margin-top: 1.5rem;">
+            <h3>Learning Outcome Achievements</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>LO</th>
+                        <th>Achievement %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lo_code, achievement in course_data.lo_achievements.items %}
+                    <tr>
+                        <td>{{ lo_code }}</td>
+                        <td>{{ achievement|floatformat:2 }}%</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+        
+        {% if course_data.po_achievements %}
+        <div style="margin-top: 1.5rem;">
+            <h3>Program Outcome Achievements</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>PO</th>
+                        <th>Achievement Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for po_code, achievement in course_data.po_achievements.items %}
+                    <tr>
+                        <td>{{ po_code }}</td>
+                        <td>{{ achievement|floatformat:2 }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+    <p>No courses with grades available.</p>
+{% endif %}
+{% endblock %}
+
+

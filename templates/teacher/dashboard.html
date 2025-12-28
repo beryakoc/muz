@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Teacher Dashboard - University SIS{% endblock %}
+
+{% block content %}
+<h1>Hoşgeldiniz {{ user.name }} {{ user.surname }}</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+    <div>
+        <h2>Academic Calendar</h2>
+        {% if calendar_events %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in calendar_events %}
+                <tr>
+                    <td>{{ event.title }}</td>
+                    <td>{{ event.start_date }}{% if event.end_date %} - {{ event.end_date }}{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No calendar events available.</p>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Announcements</h2>
+        {% if announcements %}
+        <div>
+            {% for announcement in announcements %}
+            <div style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
+                <h3>{{ announcement.title }}</h3>
+                <p>{{ announcement.content|truncatewords:30 }}</p>
+                <small>{{ announcement.created_at|date:"M d, Y" }}</small>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>No announcements available.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+

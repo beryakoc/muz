@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile - University SIS{% endblock %}
+
+{% block content %}
+<h1>Profile</h1>
+
+<div style="max-width: 600px;">
+    <table>
+        <tr>
+            <th>Name:</th>
+            <td>{{ user.name }}</td>
+        </tr>
+        <tr>
+            <th>Surname:</th>
+            <td>{{ user.surname }}</td>
+        </tr>
+        <tr>
+            <th>Email:</th>
+            <td>{{ user.email }}</td>
+        </tr>
+        <tr>
+            <th>Role:</th>
+            <td>{{ user.get_role_display }}</td>
+        </tr>
+    </table>
+</div>
+{% endblock %}
+
+

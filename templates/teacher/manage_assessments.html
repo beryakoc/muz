@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Assessments - University SIS{% endblock %}
+
+{% block content %}
+<h1>Manage Assessments - {{ course.code }} - {{ course.name }}</h1>
+
+<div style="margin-bottom: 2rem;">
+    <h2>Create New Assessment</h2>
+    <form method="post" style="max-width: 600px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create">
+        
+        <div class="form-group">
+            <label for="name">Assessment Name:</label>
+            <input type="text" name="name" id="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="assessment_type">Assessment Type:</label>
+            <select name="assessment_type" id="assessment_type" required>
+                <option value="midterm">Midterm</option>
+                <option value="final">Final</option>
+                <option value="quiz">Quiz</option>
+                <option value="assignment">Assignment</option>
+                <option value="project">Project</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="weight_percentage">Weight Percentage (0-100):</label>
+            <input type="number" name="weight_percentage" id="weight_percentage" 
+                   min="0" max="100" step="0.01" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="covered_LOs">Covered Learning Outcomes:</label>
+            <select name="covered_LOs" id="covered_LOs" multiple style="min-height: 100px;">
+                {% for lo in learning_outcomes %}
+                <option value="{{ lo.id }}">{{ lo.code }} - {{ lo.description|truncatewords:10 }}</option>
+                {% endfor %}
+            </select>
+            <small>Hold Ctrl/Cmd to select multiple</small>
+        </div>
+        
+        <button type="submit" class="btn">Create Assessment</button>
+    </form>
+</div>
+
+<div>
+    <h2>Existing Assessments</h2>
+    {% if assessments %}
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Weight %</th>
+                <th>Covered LOs</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for assessment in assessments %}
+            <tr>
+                <td>{{ assessment.name }}</td>
+                <td>{{ assessment.get_assessment_type_display }}</td>
+                <td>{{ assessment.weight_percentage }}%</td>
+                <td>
+                    {% for lo in assessment.covered_LOs.all %}
+                    {{ lo.code }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="assessment_id" value="{{ assessment.id }}">
+                        <button type="submit" class="btn btn-danger" 
+                                onclick="return confirm('Are you sure you want to delete this assessment?')">
+                            Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No assessments created yet.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'teacher_courses' %}" class="btn" style="margin-top: 1rem;">Back to Courses</a>
+{% endblock %}
+
+

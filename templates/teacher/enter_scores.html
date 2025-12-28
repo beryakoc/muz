@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}Enter Scores - University SIS{% endblock %}
+
+{% block content %}
+<h1>Enter Scores - {{ course.code }} - {{ course.name }}</h1>
+
+{% if assessments and enrollments %}
+<form method="post">
+    {% csrf_token %}
+    
+    <table style="margin-top: 1rem;">
+        <thead>
+            <tr>
+                <th>Student</th>
+                {% for assessment in assessments %}
+                <th>
+                    {{ assessment.name }}<br>
+                    <small>({{ assessment.weight_percentage }}%)</small>
+                </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for enrollment, student_scores in score_data %}
+            <tr>
+                <td>{{ enrollment.student.get_full_name }}</td>
+                {% for assessment, score_obj in student_scores %}
+                    <td>
+                        <input type="number" 
+                               name="score_{{ assessment.id }}_{{ enrollment.student.id }}" 
+                               value="{% if score_obj %}{{ score_obj.score }}{% endif %}"
+                               min="0" max="100" step="0.01" 
+                               style="width: 80px;" required>
+                        <br>
+                        <select name="letter_grade_{{ assessment.id }}_{{ enrollment.student.id }}" 
+                                style="width: 80px; margin-top: 0.25rem;">
+                            <option value="">-</option>
+                            <option value="AA" {% if score_obj and score_obj.letter_grade == 'AA' %}selected{% endif %}>AA</option>
+                            <option value="BA" {% if score_obj and score_obj.letter_grade == 'BA' %}selected{% endif %}>BA</option>
+                            <option value="BB" {% if score_obj and score_obj.letter_grade == 'BB' %}selected{% endif %}>BB</option>
+                            <option value="CB" {% if score_obj and score_obj.letter_grade == 'CB' %}selected{% endif %}>CB</option>
+                            <option value="CC" {% if score_obj and score_obj.letter_grade == 'CC' %}selected{% endif %}>CC</option>
+                            <option value="DC" {% if score_obj and score_obj.letter_grade == 'DC' %}selected{% endif %}>DC</option>
+                            <option value="DD" {% if score_obj and score_obj.letter_grade == 'DD' %}selected{% endif %}>DD</option>
+                            <option value="FF" {% if score_obj and score_obj.letter_grade == 'FF' %}selected{% endif %}>FF</option>
+                        </select>
+                    </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <button type="submit" class="btn" style="margin-top: 1rem;">Save All Scores</button>
+</form>
+{% else %}
+<p>No assessments or students found for this course.</p>
+{% endif %}
+
+<a href="{% url 'teacher_courses' %}" class="btn" style="margin-top: 1rem;">Back to Courses</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Helper to access nested dictionary in template
+// Since Django templates don't support nested dict access easily,
+// we'll use a different approach
+document.addEventListener('DOMContentLoaded', function() {
+    // The scores are already rendered in the template
+    // This is just a placeholder for any additional JS needed
+});
+</script>
+{% endblock %}
+

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Course Management - {{ course.code }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>Course Management: {{ course.code }} - {{ course.name }}</h1>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
+    <div>
+        <h2>Learning Outcomes (LO)</h2>
+        <form method="post" style="margin-bottom: 1rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_lo">
+            <div class="form-group">
+                <label for="lo_code">LO Code:</label>
+                <input type="text" name="lo_code" id="lo_code" required>
+            </div>
+            <div class="form-group">
+                <label for="lo_description">Description:</label>
+                <textarea name="lo_description" id="lo_description" required></textarea>
+            </div>
+            <button type="submit" class="btn">Add LO</button>
+        </form>
+        
+        {% if learning_outcomes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lo in learning_outcomes %}
+                <tr>
+                    <td>{{ lo.code }}</td>
+                    <td>{{ lo.description|truncatewords:10 }}</td>
+                    <td>
+                        <form method="post" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_lo">
+                            <input type="hidden" name="lo_id" value="{{ lo.id }}">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No learning outcomes defined.</p>
+        {% endif %}
+    </div>
+    
+    <div>
+        <h2>Program Outcomes (PO)</h2>
+        <form method="post" style="margin-bottom: 1rem;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_po">
+            <div class="form-group">
+                <label for="po_code">PO Code:</label>
+                <input type="text" name="po_code" id="po_code" required>
+            </div>
+            <div class="form-group">
+                <label for="po_description">Description:</label>
+                <textarea name="po_description" id="po_description" required></textarea>
+            </div>
+            <button type="submit" class="btn">Add PO</button>
+        </form>
+        
+        {% if program_outcomes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for po in program_outcomes %}
+                <tr>
+                    <td>{{ po.code }}</td>
+                    <td>{{ po.description|truncatewords:10 }}</td>
+                    <td>
+                        <form method="post" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_po">
+                            <input type="hidden" name="po_id" value="{{ po.id }}">
+                            <button type="submit" class="btn btn-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No program outcomes defined.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 3rem;">
+    <h2>LO-PO Mappings</h2>
+    <form method="post" style="margin-bottom: 1rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_mapping">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end;">
+            <div class="form-group">
+                <label for="mapping_lo">Learning Outcome:</label>
+                <select name="mapping_lo" id="mapping_lo" required>
+                    <option value="">Select LO</option>
+                    {% for lo in learning_outcomes %}
+                    <option value="{{ lo.id }}">{{ lo.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="mapping_po">Program Outcome:</label>
+                <select name="mapping_po" id="mapping_po" required>
+                    <option value="">Select PO</option>
+                    {% for po in program_outcomes %}
+                    <option value="{{ po.id }}">{{ po.code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="contribution_weight">Contribution Weight:</label>
+                <select name="contribution_weight" id="contribution_weight" required>
+                    <option value="1">Low (1)</option>
+                    <option value="2" selected>Medium (2)</option>
+                    <option value="3">High (3)</option>
+                </select>
+            </div>
+            <button type="submit" class="btn">Add Mapping</button>
+        </div>
+    </form>
+    
+    {% if lo_po_mappings %}
+    <table>
+        <thead>
+            <tr>
+                <th>Learning Outcome</th>
+                <th>Program Outcome</th>
+                <th>Contribution Weight</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mapping in lo_po_mappings %}
+            <tr>
+                <td>{{ mapping.learning_outcome.code }}</td>
+                <td>{{ mapping.program_outcome.code }}</td>
+                <td>{{ mapping.get_contribution_weight_display }} ({{ mapping.contribution_weight }})</td>
+                <td>
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_mapping">
+                        <input type="hidden" name="mapping_id" value="{{ mapping.id }}">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No LO-PO mappings defined.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'manage_courses' %}" class="btn" style="margin-top: 1rem;">Back to Courses</a>
+{% endblock %}
+
+
