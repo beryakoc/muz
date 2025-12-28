@@ -80,6 +80,35 @@ def teacher_courses(request):
 
 
 @teacher_required
+def teacher_course_los(request, course_id):
+    """Teacher views Learning Outcomes for a course and manages LO-Assessment contributions."""
+    course = get_object_or_404(Course, id=course_id)
+    
+    # Verify teacher owns this course
+    if course.teacher != request.user:
+        messages.error(request, 'You do not have permission to manage this course.')
+        return redirect('teacher_courses')
+    
+    learning_outcomes = course.learning_outcomes.all()
+    
+    # Get contribution counts for each LO
+    from assessments.models import AssessmentLOContribution
+    lo_contributions = {}
+    for lo in learning_outcomes:
+        contributions = AssessmentLOContribution.objects.filter(learning_outcome=lo)
+        lo_contributions[lo.id] = {
+            'count': contributions.count(),
+            'total_percentage': sum(float(c.contribution_percentage) for c in contributions)
+        }
+    
+    return render(request, 'teacher/course_los.html', {
+        'course': course,
+        'learning_outcomes': learning_outcomes,
+        'lo_contributions': lo_contributions,
+    })
+
+
+@teacher_required
 def teacher_students(request):
     """Students enrolled in teacher's courses."""
     courses = Course.objects.filter(teacher=request.user).prefetch_related('enrollments__student')

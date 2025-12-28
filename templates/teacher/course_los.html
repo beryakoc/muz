@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load assessment_tags %}
+
+{% block title %}Learning Outcomes - {{ course.code }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>Learning Outcomes - {{ course.code }} - {{ course.name }}</h1>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px; border: 1px solid #2196F3;">
+    <strong>LO-Centric Management:</strong> Select a Learning Outcome to manage which assessments contribute to it and their contribution percentages.
+</div>
+
+<div>
+    <h2>Learning Outcomes</h2>
+    {% if learning_outcomes %}
+    <table>
+        <thead>
+            <tr>
+                <th>LO Code</th>
+                <th>Description</th>
+                <th>Assessments</th>
+                <th>Total Contribution</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lo in learning_outcomes %}
+            <tr>
+                <td><strong>{{ lo.code }}</strong></td>
+                <td>{{ lo.description|truncatewords:20 }}</td>
+                <td>
+                    {% with contrib_info=lo_contributions|get_item:lo.id %}
+                    {% if contrib_info.count > 0 %}
+                        {{ contrib_info.count }} assessment{{ contrib_info.count|pluralize }}
+                    {% else %}
+                        <span style="color: #999;">No assessments assigned</span>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+                <td>
+                    {% with contrib_info=lo_contributions|get_item:lo.id %}
+                    {% if contrib_info.total_percentage %}
+                        <span style="{% if contrib_info.total_percentage != 100 %}color: #e74c3c;{% else %}color: #27ae60;{% endif %}">
+                            {{ contrib_info.total_percentage|floatformat:2 }}%
+                        </span>
+                    {% else %}
+                        <span style="color: #999;">0%</span>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+                <td>
+                    <a href="{% url 'manage_lo_assessments' course.id lo.id %}" class="btn">Manage Assessments</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No Learning Outcomes defined for this course. Please ask the Department Head to define LOs first.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'teacher_courses' %}" class="btn" style="margin-top: 1rem;">Back to Courses</a>
+{% endblock %}
+

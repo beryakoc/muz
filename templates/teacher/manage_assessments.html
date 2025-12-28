@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load assessment_tags %}
 
 {% block title %}Manage Assessments - University SIS{% endblock %}
 
@@ -34,14 +35,8 @@
                    min="0" max="100" step="0.01" required>
         </div>
         
-        <div class="form-group">
-            <label for="covered_LOs">Covered Learning Outcomes:</label>
-            <select name="covered_LOs" id="covered_LOs" multiple style="min-height: 100px;">
-                {% for lo in learning_outcomes %}
-                <option value="{{ lo.id }}">{{ lo.code }} - {{ lo.description|truncatewords:10 }}</option>
-                {% endfor %}
-            </select>
-            <small>Hold Ctrl/Cmd to select multiple</small>
+        <div style="margin-bottom: 1rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px; border: 1px solid #2196F3;">
+            <strong>Note:</strong> After creating the assessment, use "Manage Learning Outcomes" from the course page to assign LO contribution percentages.
         </div>
         
         <button type="submit" class="btn">Create Assessment</button>
@@ -68,9 +63,15 @@
                 <td>{{ assessment.get_assessment_type_display }}</td>
                 <td>{{ assessment.weight_percentage }}%</td>
                 <td>
-                    {% for lo in assessment.covered_LOs.all %}
-                    {{ lo.code }}{% if not forloop.last %}, {% endif %}
-                    {% endfor %}
+                    {% with contribs=assessment_contributions|get_item:assessment.id %}
+                    {% if contribs %}
+                        {% for contrib in contribs %}
+                        {{ contrib.learning_outcome.code }} ({{ contrib.contribution_percentage }}%){% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <span style="color: #999;">No LO contributions set</span>
+                    {% endif %}
+                    {% endwith %}
                 </td>
                 <td>
                     <form method="post" style="display: inline;">

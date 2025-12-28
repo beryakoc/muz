@@ -4,6 +4,30 @@ from accounts.models import User
 from courses.models import Course, LearningOutcome
 
 
+class AssessmentLOContribution(models.Model):
+    """
+    Intermediate model for Assessment-LO relationship with contribution percentage.
+    Defines how much each assessment contributes to each Learning Outcome.
+    """
+    assessment = models.ForeignKey('Assessment', on_delete=models.CASCADE, related_name='lo_contributions')
+    learning_outcome = models.ForeignKey(LearningOutcome, on_delete=models.CASCADE, related_name='assessment_contributions')
+    contribution_percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text="Percentage contribution of this assessment to this LO (0-100)"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = [['assessment', 'learning_outcome']]
+        ordering = ['assessment', 'learning_outcome']
+    
+    def __str__(self):
+        return f"{self.assessment.name} → {self.learning_outcome.code} ({self.contribution_percentage}%)"
+
+
 class Assessment(models.Model):
     """
     Assessment types: midterm, final, quiz, assignment, project, etc.
@@ -29,9 +53,10 @@ class Assessment(models.Model):
     )
     covered_LOs = models.ManyToManyField(
         LearningOutcome,
+        through='AssessmentLOContribution',
         related_name='assessments',
         blank=True,
-        help_text="Learning Outcomes covered by this assessment"
+        help_text="Learning Outcomes covered by this assessment with contribution percentages"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

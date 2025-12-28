@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
+from decimal import Decimal
 from courses.models import Course, Enrollment
-from .models import Assessment, AssessmentScore
+from .models import Assessment, AssessmentScore, AssessmentLOContribution
 from accounts.decorators import teacher_required
 
 
@@ -16,7 +18,7 @@ def manage_assessments(request, course_id):
         messages.error(request, 'You do not have permission to manage this course.')
         return redirect('teacher_courses')
     
-    assessments = Assessment.objects.filter(course=course).prefetch_related('covered_LOs')
+    assessments = Assessment.objects.filter(course=course).prefetch_related('lo_contributions__learning_outcome')
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -25,7 +27,6 @@ def manage_assessments(request, course_id):
             name = request.POST.get('name')
             assessment_type = request.POST.get('assessment_type')
             weight_percentage = request.POST.get('weight_percentage')
-            lo_ids = request.POST.getlist('covered_LOs')
             
             try:
                 weight = float(weight_percentage)
@@ -46,9 +47,8 @@ def manage_assessments(request, course_id):
                     assessment_type=assessment_type,
                     weight_percentage=weight
                 )
-                if lo_ids:
-                    assessment.covered_LOs.set(lo_ids)
-                messages.success(request, f'Assessment "{name}" created successfully.')
+                # Note: LO contributions must be set via LO-centric interface (Manage Learning Outcomes)
+                messages.success(request, f'Assessment "{name}" created successfully. Use "Manage Learning Outcomes" to set LO contributions.')
             except ValueError:
                 messages.error(request, 'Invalid weight percentage value.')
             except Exception as e:
@@ -65,12 +65,16 @@ def manage_assessments(request, course_id):
         
         return redirect('manage_assessments', course_id=course_id)
     
-    learning_outcomes = course.learning_outcomes.all()
+    # Get LO contributions for each assessment (for display only - read-only)
+    assessment_contributions = {}
+    for assessment in assessments:
+        contributions = AssessmentLOContribution.objects.filter(assessment=assessment).select_related('learning_outcome')
+        assessment_contributions[assessment.id] = contributions
     
     return render(request, 'teacher/manage_assessments.html', {
         'course': course,
         'assessments': assessments,
-        'learning_outcomes': learning_outcomes,
+        'assessment_contributions': assessment_contributions,
     })
 
 
@@ -143,4 +147,83 @@ def enter_scores(request, course_id):
         'assessments': assessments,
         'enrollments': enrollments,
         'score_data': score_data,
+    })
+
+
+@teacher_required
+def manage_lo_assessments(request, course_id, lo_id):
+    """
+    LO-centric view: Teacher manages which assessments contribute to a specific LO.
+    This is the new primary interface for setting LO-Assessment contributions.
+    """
+    from courses.models import LearningOutcome
+    
+    course = get_object_or_404(Course, id=course_id)
+    learning_outcome = get_object_or_404(LearningOutcome, id=lo_id, course=course)
+    
+    # Verify teacher owns this course
+    if course.teacher != request.user:
+        messages.error(request, 'You do not have permission to manage this course.')
+        return redirect('teacher_courses')
+    
+    # Get all assessments for this course
+    assessments = Assessment.objects.filter(course=course).order_by('created_at')
+    
+    # Get existing contributions for this LO from all assessments
+    existing_contributions = AssessmentLOContribution.objects.filter(
+        learning_outcome=learning_outcome
+    ).select_related('assessment')
+    
+    # Create a dict for easy lookup: assessment_id -> contribution
+    contribution_dict = {contrib.assessment.id: contrib for contrib in existing_contributions}
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save':
+            # Get all assessment contributions from form
+            assessment_contributions = {}
+            total_percentage = Decimal('0.00')
+            
+            for assessment in assessments:
+                contribution_key = f'assessment_{assessment.id}_contribution'
+                contribution_value = request.POST.get(contribution_key, '0')
+                try:
+                    percentage = Decimal(str(contribution_value))
+                    if percentage < 0 or percentage > 100:
+                        messages.error(request, f'Contribution percentage for {assessment.name} must be between 0 and 100.')
+                        return redirect('manage_lo_assessments', course_id=course_id, lo_id=lo_id)
+                    assessment_contributions[assessment.id] = percentage
+                    total_percentage += percentage
+                except (ValueError, TypeError):
+                    assessment_contributions[assessment.id] = Decimal('0.00')
+            
+            # Validate that sum equals 100%
+            if abs(total_percentage - Decimal('100.00')) > Decimal('0.01'):  # Allow small floating point differences
+                messages.error(request, f'Sum of contribution percentages must equal 100%. Current sum: {total_percentage}%')
+                return redirect('manage_lo_assessments', course_id=course_id, lo_id=lo_id)
+            
+            # Save contributions
+            with transaction.atomic():
+                # Delete existing contributions for this LO
+                AssessmentLOContribution.objects.filter(learning_outcome=learning_outcome).delete()
+                
+                # Create new contributions
+                for assessment_id, percentage in assessment_contributions.items():
+                    if percentage > 0:  # Only create if percentage > 0
+                        assessment = Assessment.objects.get(id=assessment_id)
+                        AssessmentLOContribution.objects.create(
+                            assessment=assessment,
+                            learning_outcome=learning_outcome,
+                            contribution_percentage=percentage
+                        )
+            
+            messages.success(request, f'Assessment contributions for {learning_outcome.code} saved successfully.')
+            return redirect('manage_lo_assessments', course_id=course_id, lo_id=lo_id)
+    
+    return render(request, 'teacher/manage_lo_assessments.html', {
+        'course': course,
+        'learning_outcome': learning_outcome,
+        'assessments': assessments,
+        'contribution_dict': contribution_dict,
     })

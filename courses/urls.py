@@ -9,6 +9,7 @@ urlpatterns = [
     # Teacher views
     path('teacher/', views.teacher_dashboard, name='teacher_dashboard'),
     path('teacher/courses/', views.teacher_courses, name='teacher_courses'),
+    path('teacher/courses/<int:course_id>/los/', views.teacher_course_los, name='teacher_course_los'),
     path('teacher/students/', views.teacher_students, name='teacher_students'),
     
     # Department Head views

@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% load assessment_tags %}
+
+{% block title %}Manage Assessments for {{ learning_outcome.code }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>Manage Assessments for {{ learning_outcome.code }}</h1>
+<p><strong>Course:</strong> {{ course.code }} - {{ course.name }}</p>
+<p><strong>Learning Outcome:</strong> {{ learning_outcome.code }} - {{ learning_outcome.description }}</p>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #fff3cd; border-radius: 4px; border: 1px solid #ffc107;">
+    <strong>Important:</strong> The sum of contribution percentages from all assessments must equal exactly 100% for this Learning Outcome.
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    
+    <div style="margin-top: 2rem;">
+        <h2>Assessment Contributions</h2>
+        <p>For <strong>{{ learning_outcome.code }}</strong>, specify what percentage each assessment contributes:</p>
+        
+        {% if assessments %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Type</th>
+                    <th>Weight in Course</th>
+                    <th>Contribution to {{ learning_outcome.code }} (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assessment in assessments %}
+                <tr>
+                    <td><strong>{{ assessment.name }}</strong></td>
+                    <td>{{ assessment.get_assessment_type_display }}</td>
+                    <td>{{ assessment.weight_percentage }}%</td>
+                    <td>
+                        {% with contrib=contribution_dict|get_item:assessment.id %}
+                        <input type="number" 
+                               name="assessment_{{ assessment.id }}_contribution" 
+                               id="assessment_{{ assessment.id }}_contribution"
+                               value="{% if contrib %}{{ contrib.contribution_percentage }}{% else %}0{% endif %}"
+                               min="0" max="100" step="0.01" 
+                               style="width: 120px;" required>
+                        <span>%</span>
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                    <td>
+                        <span id="total_percentage" style="font-weight: bold; font-size: 1.1em;">0.00%</span>
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <p>No assessments defined for this course yet. Please create assessments first.</p>
+        {% endif %}
+    </div>
+    
+    {% if assessments %}
+    <button type="submit" class="btn" style="margin-top: 1rem;">Save Contributions</button>
+    {% endif %}
+</form>
+
+<a href="{% url 'teacher_course_los' course.id %}" class="btn" style="margin-top: 1rem;">Back to Learning Outcomes</a>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inputs = document.querySelectorAll('input[type="number"][name^="assessment_"]');
+    const totalSpan = document.getElementById('total_percentage');
+    
+    function updateTotal() {
+        let total = 0;
+        inputs.forEach(input => {
+            const value = parseFloat(input.value) || 0;
+            total += value;
+        });
+        totalSpan.textContent = total.toFixed(2) + '%';
+        
+        // Highlight if not 100%
+        if (Math.abs(total - 100) > 0.01) {
+            totalSpan.style.color = '#e74c3c';
+        } else {
+            totalSpan.style.color = '#27ae60';
+        }
+    }
+    
+    inputs.forEach(input => {
+        input.addEventListener('input', updateTotal);
+        input.addEventListener('change', updateTotal);
+    });
+    
+    // Initial calculation
+    updateTotal();
+});
+</script>
+{% endblock %}
+{% endblock %}
+

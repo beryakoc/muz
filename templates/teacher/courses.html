@@ -21,6 +21,7 @@
             <td>{{ course.name }}</td>
             <td>
                 <a href="{% url 'manage_assessments' course.id %}" class="btn">Manage Assessments</a>
+                <a href="{% url 'teacher_course_los' course.id %}" class="btn">Manage Learning Outcomes</a>
                 <a href="{% url 'enter_scores' course.id %}" class="btn">Enter Scores</a>
             </td>
         </tr>

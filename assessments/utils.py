@@ -1,42 +1,39 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Sum, Q
 from courses.models import Course, LearningOutcome, LOPOMapping
-from assessments.models import Assessment, AssessmentScore
+from assessments.models import Assessment, AssessmentScore, AssessmentLOContribution
 
 
 def calculate_lo_score(student, course, learning_outcome):
     """
     Calculate LO score for a student in a specific course and LO.
     
-    Formula:
-    LO_score = SUM( score_assessment * (w_assessment / W_total) )
+    New Formula (with contribution percentages):
+    LO_score = SUM( score_assessment * (w_assessment / 100) * (c_lo / 100) )
     
     Where:
-    - w_assessment = assessment weight
-    - score_assessment = student score for that assessment
-    - W_total = sum of weights of assessments covering this LO
+    - score_assessment = student score for that assessment (0-100)
+    - w_assessment = assessment weight percentage in course (0-100)
+    - c_lo = contribution percentage of assessment to this LO (0-100)
+    
+    The calculation is normalized to ensure LO_score is between 0 and 100.
     
     Returns: Decimal between 0 and 100
     """
-    # Get all assessments that cover this LO
-    assessments = Assessment.objects.filter(
-        course=course,
-        covered_LOs=learning_outcome
-    )
+    # Get all assessment-LO contributions for this LO
+    contributions = AssessmentLOContribution.objects.filter(
+        learning_outcome=learning_outcome,
+        assessment__course=course
+    ).select_related('assessment')
     
-    if not assessments.exists():
+    if not contributions.exists():
         return Decimal('0.00')
     
-    # Calculate W_total (sum of weights for assessments covering this LO)
-    W_total = sum(assessment.weight_percentage for assessment in assessments)
-    
-    if W_total == 0:
-        return Decimal('0.00')
-    
-    # Calculate LO_score
+    # Calculate LO_score using contribution percentages
     lo_score = Decimal('0.00')
     
-    for assessment in assessments:
+    for contribution in contributions:
+        assessment = contribution.assessment
         try:
             score_obj = AssessmentScore.objects.get(
                 assessment=assessment,
@@ -44,13 +41,27 @@ def calculate_lo_score(student, course, learning_outcome):
             )
             score_assessment = Decimal(str(score_obj.score))
             w_assessment = Decimal(str(assessment.weight_percentage))
+            c_lo = Decimal(str(contribution.contribution_percentage))
             
-            # Calculate contribution: score_assessment * (w_assessment / W_total)
-            contribution = score_assessment * (w_assessment / Decimal(str(W_total)))
-            lo_score += contribution
+            # Calculate contribution: score * (weight/100) * (contribution/100)
+            # This gives the weighted contribution of this assessment to this LO
+            contribution_value = score_assessment * (w_assessment / Decimal('100')) * (c_lo / Decimal('100'))
+            lo_score += contribution_value
         except AssessmentScore.DoesNotExist:
             # If no score exists, contribution is 0
             continue
+    
+    # Normalize: Calculate total possible contribution
+    # Sum of all (weight * contribution_percentage / 100) for this LO
+    total_possible = Decimal('0.00')
+    for contribution in contributions:
+        w_assessment = Decimal(str(contribution.assessment.weight_percentage))
+        c_lo = Decimal(str(contribution.contribution_percentage))
+        total_possible += (w_assessment / Decimal('100')) * (c_lo / Decimal('100'))
+    
+    # Normalize to 0-100 scale
+    if total_possible > 0:
+        lo_score = (lo_score / total_possible) * Decimal('100')
     
     # Ensure result is between 0 and 100
     lo_score = max(Decimal('0.00'), min(Decimal('100.00'), lo_score))
