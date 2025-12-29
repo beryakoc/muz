@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from decimal import Decimal
 from .models import Course, LearningOutcome, ProgramOutcome, LOPOMapping, Enrollment, AcademicCalendar, DepartmentProgramOutcome, DepartmentLOPOContribution
 from accounts.decorators import role_required, department_head_required, student_required, teacher_required
 from accounts.models import User
@@ -94,11 +95,100 @@ def student_course_detail(request, course_id):
     from assessments.utils import get_student_department_pos
     department_po_values = get_student_department_pos(request.user)
     
+    # Get LO contribution data for PO visualization
+    from courses.models import DepartmentProgramOutcome, DepartmentLOPOContribution
+    from assessments.utils import calculate_final_lo
+    
+    po_lo_data = {}  # Store LO contributions per PO
+    for po_code, po_value in department_po_values.items():
+        try:
+            po = DepartmentProgramOutcome.objects.get(code=po_code)
+            contributions = DepartmentLOPOContribution.objects.filter(
+                department_program_outcome=po
+            ).select_related('learning_outcome', 'learning_outcome__course')
+            
+            lo_contributions = []
+            for contrib in contributions:
+                lo = contrib.learning_outcome
+                # Only include LOs from this course
+                if lo.course.id == course.id:
+                    lo_score = calculate_final_lo(request.user, course, lo)
+                    if lo_score is not None:
+                        lo_contributions.append({
+                            'lo_code': lo.code,
+                            'lo_value': float(lo_score),
+                            'contribution_pct': float(contrib.contribution_percentage),
+                            'contributed_value': float(lo_score * (Decimal(str(contrib.contribution_percentage)) / Decimal('100')))
+                        })
+            
+            if lo_contributions:
+                po_lo_data[po_code] = {
+                    'po_value': po_value,
+                    'lo_contributions': lo_contributions
+                }
+        except DepartmentProgramOutcome.DoesNotExist:
+            continue
+    
+    # Get comparison data for student view
+    from assessments.utils import calculate_course_total_grade
+    course_students = Enrollment.objects.filter(course=course).select_related('student')
+    student_grades = []
+    student_lo_data = {}
+    
+    for course_enrollment in course_students:
+        other_student = course_enrollment.student
+        other_grade = calculate_course_total_grade(other_student, course)
+        if other_grade is not None:
+            student_grades.append(float(other_grade))
+        
+        # Get LO achievements for comparison
+        other_course_data = get_student_course_data(other_student, course)
+        if other_course_data.get('lo_achievements'):
+            for lo_code, lo_value in other_course_data['lo_achievements'].items():
+                if lo_code not in student_lo_data:
+                    student_lo_data[lo_code] = []
+                student_lo_data[lo_code].append(float(lo_value))
+    
+    # Calculate averages - ensure we have valid data
+    avg_grade = None
+    if student_grades:
+        valid_grades = [g for g in student_grades if g is not None]
+        if valid_grades:
+            avg_grade = sum(valid_grades) / len(valid_grades)
+    
+    avg_lo = {}
+    for lo_code, values in student_lo_data.items():
+        if values:
+            valid_values = [v for v in values if v is not None]
+            if valid_values:
+                avg_lo[lo_code] = sum(valid_values) / len(valid_values)
+            else:
+                avg_lo[lo_code] = None
+        else:
+            avg_lo[lo_code] = None
+    
+    comparison_data = {
+        'student_grade': float(course_data['total_grade']) if course_data.get('total_grade') is not None else None,
+        'avg_grade': float(avg_grade) if avg_grade is not None else None,
+        'lo_comparison_list': [
+            {
+                'lo_code': lo_code,
+                'student_value': float(student_value),
+                'avg_value': float(avg_lo.get(lo_code)) if avg_lo.get(lo_code) is not None else None
+            }
+            for lo_code, student_value in course_data.get('lo_achievements', {}).items()
+            if student_value is not None
+        ],
+        'total_students': len([g for g in student_grades if g is not None])
+    }
+    
     return render(request, 'student/course_detail.html', {
         'course': course,
         'course_data': course_data,
         'assessments_list': assessments_list,
         'department_po_values': department_po_values,
+        'po_lo_data': po_lo_data,
+        'comparison_data': comparison_data,
     })
 
 
@@ -198,19 +288,114 @@ def teacher_student_profile(request, student_id):
     
     # Get course data for each enrollment
     courses_data = []
+    comparison_data = {}  # Store comparison data per course
+    
     for enrollment in enrollments:
         course = enrollment.course
         course_data = get_student_course_data(student, course)
         courses_data.append(course_data)
+        
+        # Get all students in this course for comparison
+        from assessments.utils import calculate_course_total_grade, get_student_department_pos
+        from assessments.models import AssessmentScore
+        
+        course_students = Enrollment.objects.filter(course=course).select_related('student')
+        student_grades = []
+        student_lo_data = {}
+        
+        for course_enrollment in course_students:
+            other_student = course_enrollment.student
+            other_grade = calculate_course_total_grade(other_student, course)
+            if other_grade is not None:
+                student_grades.append({
+                    'student': other_student,
+                    'grade': float(other_grade)
+                })
+            
+            # Get LO achievements for comparison
+            other_course_data = get_student_course_data(other_student, course)
+            if other_course_data.get('lo_achievements'):
+                for lo_code, lo_value in other_course_data['lo_achievements'].items():
+                    if lo_code not in student_lo_data:
+                        student_lo_data[lo_code] = []
+                    student_lo_data[lo_code].append(float(lo_value))
+        
+        # Calculate averages - ensure we have valid data
+        avg_grade = None
+        if student_grades:
+            valid_grades = [s['grade'] for s in student_grades if s['grade'] is not None]
+            if valid_grades:
+                avg_grade = sum(valid_grades) / len(valid_grades)
+        
+        avg_lo = {}
+        for lo_code, values in student_lo_data.items():
+            if values:
+                valid_values = [v for v in values if v is not None]
+                if valid_values:
+                    avg_lo[lo_code] = sum(valid_values) / len(valid_values)
+                else:
+                    avg_lo[lo_code] = None
+            else:
+                avg_lo[lo_code] = None
+        
+        # Create list of LO comparison data for easier template access
+        lo_comparison_list = []
+        for lo_code, student_lo_value in course_data.get('lo_achievements', {}).items():
+            if student_lo_value is not None:
+                lo_comparison_list.append({
+                    'lo_code': lo_code,
+                    'student_value': float(student_lo_value),
+                    'avg_value': float(avg_lo.get(lo_code)) if avg_lo.get(lo_code) is not None else None
+                })
+        
+        comparison_data[course.id] = {
+            'student_grade': float(course_data['total_grade']) if course_data.get('total_grade') is not None else None,
+            'avg_grade': float(avg_grade) if avg_grade is not None else None,
+            'student_lo': course_data.get('lo_achievements', {}),
+            'avg_lo': avg_lo,
+            'lo_comparison_list': lo_comparison_list,
+            'total_students': len([s for s in student_grades if s['grade'] is not None])
+        }
     
     # Get department PO values for this student
     from assessments.utils import get_student_department_pos
     department_po_values = get_student_department_pos(student)
     
+    # Get PO comparison data
+    po_comparison = {}
+    if department_po_values:
+        from courses.models import DepartmentProgramOutcome, DepartmentLOPOContribution
+        all_students = Enrollment.objects.filter(
+            course__in=[e.course for e in enrollments]
+        ).values_list('student', flat=True).distinct()
+        
+        for po_code, po_value in department_po_values.items():
+            po_student_values = []
+            for other_student_id in all_students:
+                from accounts.models import User
+                other_student = User.objects.get(id=other_student_id)
+                other_po_values = get_student_department_pos(other_student)
+                if po_code in other_po_values:
+                    po_student_values.append(other_po_values[po_code])
+            
+            avg_po_value = None
+            if po_student_values:
+                valid_values = [v for v in po_student_values if v is not None]
+                if valid_values:
+                    avg_po_value = sum(valid_values) / len(valid_values)
+            
+            po_comparison[po_code] = {
+                'student_value': float(po_value) if po_value is not None else None,
+                'avg_value': float(avg_po_value) if avg_po_value is not None else None,
+                'total_students': len([v for v in po_student_values if v is not None])
+            }
+    
     return render(request, 'teacher/student_profile.html', {
         'student': student,
         'courses_data': courses_data,
         'department_po_values': department_po_values,
+        'comparison_data': comparison_data,
+        'po_comparison': po_comparison,
     })
 
 
@@ -397,10 +582,27 @@ def assign_students(request):
         
         return redirect('assign_students')
     
+    # Group enrollments by course for better organization
+    enrollments_by_course = []
+    course_dict = {}
+    
+    for enrollment in enrollments.order_by('course__code', 'student__name', 'student__surname'):
+        course = enrollment.course
+        if course.id not in course_dict:
+            course_dict[course.id] = {
+                'course': course,
+                'enrollments': []
+            }
+        course_dict[course.id]['enrollments'].append(enrollment)
+    
+    # Convert to list and sort by course code
+    enrollments_by_course = sorted(course_dict.values(), key=lambda x: x['course'].code)
+    
     return render(request, 'department_head/assign_students.html', {
         'students': students,
         'courses': courses,
         'enrollments': enrollments,
+        'enrollments_by_course': enrollments_by_course,
     })
 
 

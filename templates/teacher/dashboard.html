@@ -1,75 +1,205 @@
 {% extends 'base.html' %}
 
-{% block title %}Teacher Dashboard - University SIS{% endblock %}
+{% block title %}Teacher Dashboard - Pathwise{% endblock %}
+
+{% block extra_css %}
+<style>
+    .dashboard-header {
+        background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.2);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.1);
+        border-left: 4px solid #1a237e;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 16px rgba(26, 35, 126, 0.2);
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1a237e;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-label {
+        color: #757575;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .info-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.1);
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #f5f5dc;
+        transition: all 0.3s ease;
+    }
+    
+    .info-card:hover {
+        box-shadow: 0 4px 16px rgba(26, 35, 126, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    .announcement-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.1);
+        margin-bottom: 1rem;
+        border-left: 4px solid #1a237e;
+        transition: all 0.3s ease;
+    }
+    
+    .announcement-card:hover {
+        box-shadow: 0 4px 16px rgba(26, 35, 126, 0.15);
+        transform: translateX(5px);
+    }
+    
+    .course-card {
+        background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.1);
+        margin-bottom: 1.5rem;
+        border-left: 4px solid #1a237e;
+        transition: all 0.3s ease;
+    }
+    
+    .course-card:hover {
+        box-shadow: 0 4px 16px rgba(26, 35, 126, 0.15);
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>Hoşgeldiniz {{ user.name }} {{ user.surname }}</h1>
+<div class="dashboard-header">
+    <h1 style="margin: 0; color: white;">Welcome, {{ user.name }} {{ user.surname }}</h1>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">Teacher Dashboard - Manage your courses and students</p>
+</div>
+
+{% if courses_with_students %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ courses_with_students|length }}</div>
+        <div class="stat-label">Courses Teaching</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% with total=0 %}
+                {% for item in courses_with_students %}
+                    {% if item.students %}{{ total|add:item.students|length }}{% endif %}
+                {% endfor %}
+                {{ total }}
+            {% endwith %}
+        </div>
+        <div class="stat-label">Total Students</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ calendar_events|length|default:"0" }}</div>
+        <div class="stat-label">Upcoming Events</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ announcements|length|default:"0" }}</div>
+        <div class="stat-label">New Announcements</div>
+    </div>
+</div>
+{% endif %}
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-top: 2rem;">
     <div>
-        <h2>Academic Calendar</h2>
-        {% if calendar_events %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Title</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for event in calendar_events %}
-                <tr>
-                    <td>{{ event.title }}</td>
-                    <td>{{ event.start_date }}{% if event.end_date %} - {{ event.end_date }}{% endif %}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p>No calendar events available.</p>
-        {% endif %}
+        <div class="info-card">
+            <h2 style="color: #1a237e; margin-bottom: 1rem; border-bottom: 2px solid #f5f5dc; padding-bottom: 0.5rem;">Academic Calendar</h2>
+            {% if calendar_events %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in calendar_events %}
+                    <tr>
+                        <td>{{ event.title }}</td>
+                        <td>{{ event.start_date }}{% if event.end_date %} - {{ event.end_date }}{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #757575; font-style: italic;">No calendar events available.</p>
+            {% endif %}
+        </div>
     </div>
     
     <div>
-        <h2>Announcements</h2>
-        {% if announcements %}
-        <div>
-            {% for announcement in announcements %}
-            <div style="margin-bottom: 1rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
-                <h3>{{ announcement.title }}</h3>
-                <p>{{ announcement.content|truncatewords:30 }}</p>
-                <small>{{ announcement.created_at|date:"M d, Y" }}</small>
+        <div class="info-card">
+            <h2 style="color: #1a237e; margin-bottom: 1rem; border-bottom: 2px solid #f5f5dc; padding-bottom: 0.5rem;">Announcements</h2>
+            {% if announcements %}
+            <div>
+                {% for announcement in announcements %}
+                <div class="announcement-card">
+                    <h3 style="color: #1a237e; margin-bottom: 0.5rem; font-size: 1.1rem;">{{ announcement.title }}</h3>
+                    <p style="color: #424242; margin-bottom: 0.5rem;">{{ announcement.content|truncatewords:30 }}</p>
+                    <small style="color: #757575;">{{ announcement.created_at|date:"M d, Y" }}</small>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% else %}
+            <p style="color: #757575; font-style: italic;">No announcements available.</p>
+            {% endif %}
         </div>
-        {% else %}
-        <p>No announcements available.</p>
-        {% endif %}
     </div>
 </div>
 
 <div style="margin-top: 2rem;">
-    <h2>My Courses and Assigned Students</h2>
-    {% if courses_with_students %}
-        {% for item in courses_with_students %}
-        <div style="margin-bottom: 2rem; padding: 1rem; background-color: #f8f9fa; border-radius: 4px;">
-            <h3>{{ item.course.code }} - {{ item.course.name }}</h3>
-            {% if item.students %}
-            <p><strong>Assigned Students ({{ item.students|length }}):</strong></p>
-            <ul>
-                {% for student in item.students %}
-                <li>{{ student.get_full_name }} ({{ student.email }})</li>
-                {% endfor %}
-            </ul>
-            {% else %}
-            <p>No students assigned to this course yet.</p>
-            {% endif %}
-        </div>
-        {% endfor %}
-    {% else %}
-        <p>You are not assigned to any courses yet.</p>
-    {% endif %}
+    <div class="info-card">
+        <h2 style="color: #1a237e; margin-bottom: 1rem; border-bottom: 2px solid #f5f5dc; padding-bottom: 0.5rem;">My Courses and Assigned Students</h2>
+        {% if courses_with_students %}
+            {% for item in courses_with_students %}
+            <div class="course-card">
+                <h3 style="color: #1a237e; margin-bottom: 1rem;">{{ item.course.code }} - {{ item.course.name }}</h3>
+                {% if item.students %}
+                <p style="margin-bottom: 0.75rem;"><strong style="color: #1a237e;">Assigned Students ({{ item.students|length }}):</strong></p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 0.5rem;">
+                    {% for student in item.students %}
+                    <div style="padding: 0.5rem; background: #fafafa; border-radius: 6px; border-left: 3px solid #1a237e;">
+                        <strong>{{ student.get_full_name }}</strong><br>
+                        <small style="color: #757575;">{{ student.email }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p style="color: #757575; font-style: italic;">No students assigned to this course yet.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p style="color: #757575; font-style: italic;">You are not assigned to any courses yet.</p>
+        {% endif %}
+    </div>
 </div>
 {% endblock %}
-
-

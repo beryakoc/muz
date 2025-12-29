@@ -1,19 +1,172 @@
 {% extends 'base.html' %}
 
-{% block title %}Student Profile - {{ student.get_full_name }} - University SIS{% endblock %}
+{% block title %}Student Profile - {{ student.get_full_name }} - Pathwise{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --navy-blue: #1a237e;
+        --navy-blue-light: #283593;
+        --grey: #757575;
+        --beige: #f5f5dc;
+        --beige-light: #fafafa;
+        --white: #ffffff;
+    }
+    
+    .profile-header {
+        background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.2);
+    }
+    
+    .profile-sidebar {
+        background: linear-gradient(135deg, var(--white) 0%, var(--beige-light) 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26, 35, 126, 0.1);
+        border-left: 4px solid var(--navy-blue);
+        margin-bottom: 2rem;
+    }
+    
+    .sidebar-stat {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: var(--white);
+        border-radius: 8px;
+        border-left: 3px solid var(--navy-blue);
+    }
+    
+    .sidebar-stat-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--navy-blue);
+    }
+    
+    .sidebar-stat-label {
+        color: var(--grey);
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+    
+    .chart-container {
+        position: relative;
+        margin: 2rem auto;
+        padding: 2rem;
+        background: linear-gradient(135deg, var(--white) 0%, var(--beige-light) 100%);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.15);
+        max-width: 900px;
+        border: 1px solid rgba(26, 35, 126, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .chart-container:hover {
+        box-shadow: 0 6px 20px rgba(26, 35, 126, 0.2);
+        transform: translateY(-2px);
+    }
+    
+    .chart-wrapper {
+        position: relative;
+        height: 400px;
+        margin: 1rem 0;
+    }
+    
+    .chart-container {
+        max-width: 900px;
+    }
+    
+    .chart-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: var(--navy-blue);
+        margin-bottom: 1.2rem;
+        text-align: center;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--beige);
+    }
+    
+    .comparison-info {
+        text-align: center;
+        color: var(--grey);
+        font-size: 0.9rem;
+        margin-top: 1rem;
+        font-style: italic;
+    }
+    
+    .course-card {
+        background: linear-gradient(135deg, var(--white) 0%, var(--beige-light) 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(26, 35, 126, 0.1);
+        border: 1px solid rgba(26, 35, 126, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .course-card:hover {
+        box-shadow: 0 6px 20px rgba(26, 35, 126, 0.15);
+        transform: translateY(-2px);
+    }
+    
+    .layout-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        gap: 2rem;
+    }
+    
+    @media (max-width: 968px) {
+        .layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>Student Profile</h1>
-
-<div style="margin-bottom: 2rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px;">
-    <h2>{{ student.get_full_name }}</h2>
-    <p><strong>Email:</strong> {{ student.email }}</p>
-    <p><em>Showing only courses taught by you</em></p>
+<div class="profile-header">
+    <h1 style="margin: 0; color: white;">Student Profile</h1>
+    <p style="margin: 0.5rem 0 0 0; opacity: 0.9;">{{ student.get_full_name }} - Performance Overview</p>
 </div>
+
+<div class="layout-grid">
+    <div>
+        <div class="profile-sidebar">
+            <h3 style="color: var(--navy-blue); margin-bottom: 1rem; border-bottom: 2px solid var(--beige); padding-bottom: 0.5rem;">Student Information</h3>
+            <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e0e0e0;">
+                <p style="margin: 0.25rem 0;"><strong>Name:</strong><br>{{ student.get_full_name }}</p>
+                <p style="margin: 0.25rem 0;"><strong>Email:</strong><br>{{ student.email }}</p>
+            </div>
+            
+            {% if courses_data %}
+            <div class="sidebar-stat">
+                <div class="sidebar-stat-value">{{ courses_data|length }}</div>
+                <div class="sidebar-stat-label">Courses Enrolled</div>
+            </div>
+            
+            {% if department_po_values %}
+            <div class="sidebar-stat">
+                <div class="sidebar-stat-value">{{ department_po_values|length }}</div>
+                <div class="sidebar-stat-label">Program Outcomes</div>
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #e0e0e0;">
+                <p style="color: var(--grey); font-size: 0.85rem; font-style: italic; margin: 0;">
+                    <em>Showing only courses taught by you</em>
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div>
 
 {% if courses_data %}
     {% for course_data in courses_data %}
-    <div style="margin-bottom: 3rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+    <div class="course-card">
         <h2>{{ course_data.course.code }} - {{ course_data.course.name }}</h2>
         
         {% if course_data.assessments %}
@@ -49,6 +202,111 @@
             <h3>Course Grade</h3>
             <p><strong>Total Grade:</strong> {{ course_data.total_grade|floatformat:2 }}%</p>
             <p><strong>Letter Grade:</strong> {{ course_data.letter_grade }}</p>
+            
+            {% for course_id, comp in comparison_data.items %}
+            {% if course_id == course_data.course.id and comp.student_grade is not None and comp.avg_grade is not None %}
+            <div class="chart-container">
+                <div class="chart-title">Grade Comparison</div>
+                <div class="chart-wrapper" style="height: 400px;">
+                    <canvas id="gradeChart_{{ course_data.course.id }}"></canvas>
+                </div>
+                <div class="comparison-info">Based on {{ comp.total_students }} student{{ comp.total_students|pluralize }} in this course</div>
+                <script>
+                (function() {
+                    const ctx = document.getElementById('gradeChart_{{ course_data.course.id }}');
+                    if (ctx) {
+                        const studentGrade = {{ comp.student_grade|floatformat:2 }};
+                        const avgGrade = {{ comp.avg_grade|floatformat:2 }};
+                        
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: ['Student', 'Class Average'],
+                                datasets: [{
+                                    label: 'Grade (%)',
+                                    data: [studentGrade, avgGrade],
+                                    backgroundColor: [
+                                        'rgba(26, 35, 126, 0.8)',
+                                        'rgba(117, 117, 117, 0.8)'
+                                    ],
+                                    borderColor: [
+                                        'rgba(26, 35, 126, 1)',
+                                        'rgba(117, 117, 117, 1)'
+                                    ],
+                                    borderWidth: 2,
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: false
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        padding: 12,
+                                        titleFont: {
+                                            size: 14,
+                                            weight: 'bold'
+                                        },
+                                        bodyFont: {
+                                            size: 13
+                                        },
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.parsed.y.toFixed(2) + '%';
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: {
+                                            stepSize: 10,
+                                            font: {
+                                                size: 12
+                                            },
+                                            callback: function(value) {
+                                                return value + '%';
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Grade (%)',
+                                            font: {
+                                                size: 14,
+                                                weight: 'bold'
+                                            },
+                                            padding: { bottom: 10 }
+                                        },
+                                        grid: {
+                                            color: 'rgba(0, 0, 0, 0.05)'
+                                        }
+                                    },
+                                    x: {
+                                        ticks: {
+                                            font: {
+                                                size: 13,
+                                                weight: '500'
+                                            }
+                                        },
+                                        grid: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })();
+                </script>
+            </div>
+            {% endif %}
+            {% endfor %}
         </div>
         {% endif %}
         
@@ -71,6 +329,136 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            {% for course_id, comp in comparison_data.items %}
+            {% if course_id == course_data.course.id and comp.lo_comparison_list %}
+            <div class="chart-container">
+                <div class="chart-title">LO Achievement Comparison</div>
+                <div class="chart-wrapper" style="height: 450px;">
+                    <canvas id="loChart_{{ course_data.course.id }}"></canvas>
+                </div>
+                <div class="comparison-info">Comparing student performance with class average</div>
+                <script>
+                (function() {
+                    const ctx = document.getElementById('loChart_{{ course_data.course.id }}');
+                    if (ctx) {
+                        const loLabels = [];
+                        const studentData = [];
+                        const avgData = [];
+                        
+                        {% for lo_comp in comp.lo_comparison_list %}
+                        loLabels.push('{{ lo_comp.lo_code }}');
+                        studentData.push({{ lo_comp.student_value|floatformat:2 }});
+                        {% if lo_comp.avg_value is not None %}
+                        avgData.push({{ lo_comp.avg_value|floatformat:2 }});
+                        {% else %}
+                        avgData.push(null);
+                        {% endif %}
+                        {% endfor %}
+                        
+                        new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: loLabels,
+                                datasets: [{
+                                    label: 'Student',
+                                    data: studentData,
+                                    backgroundColor: 'rgba(26, 35, 126, 0.7)',
+                                    borderColor: 'rgba(26, 35, 126, 1)',
+                                    borderWidth: 2,
+                                    borderRadius: 6
+                                }, {
+                                    label: 'Class Average',
+                                    data: avgData,
+                                    backgroundColor: 'rgba(117, 117, 117, 0.7)',
+                                    borderColor: 'rgba(117, 117, 117, 1)',
+                                    borderWidth: 2,
+                                    borderRadius: 6
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        display: true,
+                                        position: 'top',
+                                        labels: {
+                                            font: {
+                                                size: 13,
+                                                weight: '500'
+                                            },
+                                            padding: 15,
+                                            usePointStyle: true
+                                        }
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        padding: 12,
+                                        titleFont: {
+                                            size: 14,
+                                            weight: 'bold'
+                                        },
+                                        bodyFont: {
+                                            size: 13
+                                        },
+                                        callbacks: {
+                                            label: function(context) {
+                                                const value = context.parsed.y;
+                                                if (value === null || value === undefined) {
+                                                    return context.dataset.label + ': No data';
+                                                }
+                                                return context.dataset.label + ': ' + value.toFixed(2) + '%';
+                                            }
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100,
+                                        ticks: {
+                                            stepSize: 10,
+                                            font: {
+                                                size: 12
+                                            },
+                                            callback: function(value) {
+                                                return value + '%';
+                                            }
+                                        },
+                                        title: {
+                                            display: true,
+                                            text: 'Achievement (%)',
+                                            font: {
+                                                size: 14,
+                                                weight: 'bold'
+                                            },
+                                            padding: { bottom: 10 }
+                                        },
+                                        grid: {
+                                            color: 'rgba(0, 0, 0, 0.05)'
+                                        }
+                                    },
+                                    x: {
+                                        ticks: {
+                                            font: {
+                                                size: 12,
+                                                weight: '500'
+                                            }
+                                        },
+                                        grid: {
+                                            display: false
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })();
+                </script>
+            </div>
+            {% endif %}
+            {% endfor %}
         </div>
         {% else %}
         <div style="margin-top: 1.5rem;">
@@ -84,7 +472,7 @@
 {% endif %}
 
 {% if department_po_values %}
-<div style="margin-top: 3rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+<div class="course-card" style="margin-top: 3rem;">
     <h2>Department Program Outcomes (PO)</h2>
     <p style="color: #666; margin-bottom: 1rem;">These values are calculated across all courses using the formula: PO = sum(LO_value × LO_percentage / 100)</p>
     <table>
@@ -103,9 +491,140 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    {% if po_comparison %}
+    <div class="chart-container">
+        <div class="chart-title">PO Achievement Comparison</div>
+        <div class="chart-wrapper" style="height: 450px;">
+            <canvas id="poComparisonChart"></canvas>
+        </div>
+        <div class="comparison-info">Comparing student PO values with department average</div>
+        <script>
+        (function() {
+            const ctx = document.getElementById('poComparisonChart');
+            if (ctx) {
+                const poLabels = [];
+                const studentData = [];
+                const avgData = [];
+                
+                {% for po_code, comp in po_comparison.items %}
+                poLabels.push('{{ po_code }}');
+                {% if comp.student_value is not None %}
+                studentData.push({{ comp.student_value|floatformat:2 }});
+                {% else %}
+                studentData.push(null);
+                {% endif %}
+                {% if comp.avg_value is not None %}
+                avgData.push({{ comp.avg_value|floatformat:2 }});
+                {% else %}
+                avgData.push(null);
+                {% endif %}
+                {% endfor %}
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: poLabels,
+                        datasets: [{
+                            label: 'Student',
+                            data: studentData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(41, 128, 185, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }, {
+                            label: 'Average',
+                            data: avgData,
+                            backgroundColor: 'rgba(149, 165, 166, 0.7)',
+                            borderColor: 'rgba(127, 140, 141, 1)',
+                            borderWidth: 2,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 13,
+                                        weight: '500'
+                                    },
+                                    padding: 15,
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                padding: 12,
+                                titleFont: {
+                                    size: 14,
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 13
+                                },
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.parsed.y;
+                                        if (value === null || value === undefined) {
+                                            return context.dataset.label + ': No data';
+                                        }
+                                        return context.dataset.label + ': ' + value.toFixed(2) + '%';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                ticks: {
+                                    stepSize: 10,
+                                    font: {
+                                        size: 12
+                                    },
+                                    callback: function(value) {
+                                        return value + '%';
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Achievement (%)',
+                                    font: {
+                                        size: 14,
+                                        weight: 'bold'
+                                    },
+                                    padding: { bottom: 10 }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: {
+                                        size: 12,
+                                        weight: '500'
+                                    }
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        })();
+        </script>
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 
 <a href="{% url 'teacher_students' %}" class="btn" style="margin-top: 1rem;">Back to My Students</a>
 {% endblock %}
-

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Assign Students to Courses - University SIS{% endblock %}
+{% block title %}Assign Students to Courses - Pathwise{% endblock %}
 
 {% block content %}
 <h1>Assign Students to Courses</h1>
@@ -37,39 +37,81 @@
 
 <div>
     <h2>Current Assignments</h2>
-    {% if enrollments %}
-    <table>
-        <thead>
-            <tr>
-                <th>Student</th>
-                <th>Course</th>
-                <th>Teacher</th>
-                <th>Enrolled Date</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for enrollment in enrollments %}
-            <tr>
-                <td>{{ enrollment.student.get_full_name }}</td>
-                <td>{{ enrollment.course.code }} - {{ enrollment.course.name }}</td>
-                <td>{{ enrollment.course.teacher.get_full_name|default:"Not assigned" }}</td>
-                <td>{{ enrollment.enrolled_at|date:"M d, Y" }}</td>
-                <td>
-                    <form method="post" style="display: inline;">
-                        {% csrf_token %}
-                        <input type="hidden" name="action" value="remove">
-                        <input type="hidden" name="enrollment_id" value="{{ enrollment.id }}">
-                        <button type="submit" class="btn btn-danger" 
-                                onclick="return confirm('Are you sure you want to remove this student from the course?')">
-                            Remove
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {% if enrollments_by_course %}
+        {% for course_group in enrollments_by_course %}
+        <div class="card" style="border-left: 4px solid #1a237e; background: linear-gradient(135deg, #ffffff 0%, #fafafa 100%);">
+            <h3 style="color: #1a237e; margin-bottom: 1rem; font-weight: 600;">
+                {{ course_group.course.code }} - {{ course_group.course.name }}
+                <span style="font-size: 0.9em; font-weight: normal; color: #666;">
+                    ({{ course_group.enrollments|length }} student{{ course_group.enrollments|length|pluralize }})
+                </span>
+            </h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Teacher</th>
+                        <th>Enrolled Date</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in course_group.enrollments %}
+                    <tr>
+                        <td>{{ enrollment.student.get_full_name }}</td>
+                        <td>{{ enrollment.course.teacher.get_full_name|default:"Not assigned" }}</td>
+                        <td>{{ enrollment.enrolled_at|date:"M d, Y" }}</td>
+                        <td>
+                            <form method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="remove">
+                                <input type="hidden" name="enrollment_id" value="{{ enrollment.id }}">
+                                <button type="submit" class="btn btn-danger" 
+                                        onclick="return confirm('Are you sure you want to remove this student from the course?')">
+                                    Remove
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    {% elif enrollments %}
+        {# Fallback to old format if grouping fails #}
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Course</th>
+                    <th>Teacher</th>
+                    <th>Enrolled Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for enrollment in enrollments %}
+                <tr>
+                    <td>{{ enrollment.student.get_full_name }}</td>
+                    <td>{{ enrollment.course.code }} - {{ enrollment.course.name }}</td>
+                    <td>{{ enrollment.course.teacher.get_full_name|default:"Not assigned" }}</td>
+                    <td>{{ enrollment.enrolled_at|date:"M d, Y" }}</td>
+                    <td>
+                        <form method="post" style="display: inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="remove">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.id }}">
+                            <button type="submit" class="btn btn-danger" 
+                                    onclick="return confirm('Are you sure you want to remove this student from the course?')">
+                                Remove
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% else %}
     <p>No student-course assignments found.</p>
     {% endif %}
