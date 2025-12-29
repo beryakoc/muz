@@ -4,21 +4,30 @@ from courses.models import Course, LearningOutcome, LOPOMapping
 from assessments.models import Assessment, AssessmentScore, AssessmentLOContribution
 
 
-def calculate_lo_score(student, course, learning_outcome):
+def calculate_final_lo(student, course, learning_outcome):
     """
-    Calculate LO score for a student in a specific course and LO.
+    Calculate final LO value for a student, only if total contribution equals 100%.
     
-    New Formula (with contribution percentages):
-    LO_score = SUM( score_assessment * (w_assessment / 100) * (c_lo / 100) )
+    Business Rules:
+    - Total contribution percentage from all assessments must equal exactly 100%
+    - Returns None if total_contribution != 100%
+    - Returns calculated LO value only if total_contribution == 100%
+    - Never reads legacy/static LO value fields
+    
+    Formula (when total_contribution == 100%):
+    LO_value = SUM( student_grade × LO_contribution_percentage / 100 )
     
     Where:
-    - score_assessment = student score for that assessment (0-100)
-    - w_assessment = assessment weight percentage in course (0-100)
-    - c_lo = contribution percentage of assessment to this LO (0-100)
+    - student_grade = student's score for that assessment (0-100)
+    - LO_contribution_percentage = contribution percentage of assessment to this LO (0-100)
     
-    The calculation is normalized to ensure LO_score is between 0 and 100.
+    Example:
+    - Vize1: student got 80, LO contribution is 40% → 80 × 0.40 = 32
+    - Vize2: student got 70, LO contribution is 40% → 70 × 0.40 = 28
+    - Final: student got 90, LO contribution is 20% → 90 × 0.20 = 18
+    - Final LO Value = 32 + 28 + 18 = 78
     
-    Returns: Decimal between 0 and 100
+    Returns: Decimal between 0 and 100, or None if total_contribution != 100%
     """
     # Get all assessment-LO contributions for this LO
     contributions = AssessmentLOContribution.objects.filter(
@@ -27,10 +36,19 @@ def calculate_lo_score(student, course, learning_outcome):
     ).select_related('assessment')
     
     if not contributions.exists():
-        return Decimal('0.00')
+        return None
     
-    # Calculate LO_score using contribution percentages
-    lo_score = Decimal('0.00')
+    # Calculate total contribution percentage (sum of all contribution_percentage values)
+    total_contribution = Decimal('0.00')
+    for contribution in contributions:
+        total_contribution += Decimal(str(contribution.contribution_percentage))
+    
+    # CRITICAL: Only calculate if total_contribution == 100%
+    if abs(total_contribution - Decimal('100.00')) > Decimal('0.01'):  # Allow small floating point differences
+        return None
+    
+    # Calculate LO_value: SUM( student_grade × LO_contribution_percentage / 100 )
+    lo_value = Decimal('0.00')
     
     for contribution in contributions:
         assessment = contribution.assessment
@@ -39,34 +57,30 @@ def calculate_lo_score(student, course, learning_outcome):
                 assessment=assessment,
                 student=student
             )
-            score_assessment = Decimal(str(score_obj.score))
-            w_assessment = Decimal(str(assessment.weight_percentage))
-            c_lo = Decimal(str(contribution.contribution_percentage))
+            student_grade = Decimal(str(score_obj.score))
+            lo_contribution_pct = Decimal(str(contribution.contribution_percentage))
             
-            # Calculate contribution: score * (weight/100) * (contribution/100)
-            # This gives the weighted contribution of this assessment to this LO
-            contribution_value = score_assessment * (w_assessment / Decimal('100')) * (c_lo / Decimal('100'))
-            lo_score += contribution_value
+            # Multiply student grade by LO contribution percentage
+            # Example: 80 × 40% = 80 × 0.40 = 32
+            contribution_value = student_grade * (lo_contribution_pct / Decimal('100'))
+            lo_value += contribution_value
         except AssessmentScore.DoesNotExist:
             # If no score exists, contribution is 0
             continue
     
-    # Normalize: Calculate total possible contribution
-    # Sum of all (weight * contribution_percentage / 100) for this LO
-    total_possible = Decimal('0.00')
-    for contribution in contributions:
-        w_assessment = Decimal(str(contribution.assessment.weight_percentage))
-        c_lo = Decimal(str(contribution.contribution_percentage))
-        total_possible += (w_assessment / Decimal('100')) * (c_lo / Decimal('100'))
-    
-    # Normalize to 0-100 scale
-    if total_possible > 0:
-        lo_score = (lo_score / total_possible) * Decimal('100')
-    
     # Ensure result is between 0 and 100
-    lo_score = max(Decimal('0.00'), min(Decimal('100.00'), lo_score))
+    lo_value = max(Decimal('0.00'), min(Decimal('100.00'), lo_value))
     
-    return lo_score.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+    return lo_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def calculate_lo_score(student, course, learning_outcome):
+    """
+    DEPRECATED: Use calculate_final_lo() instead.
+    This function is kept for backward compatibility but delegates to calculate_final_lo().
+    All new code should use calculate_final_lo() directly.
+    """
+    return calculate_final_lo(student, course, learning_outcome)
 
 
 def calculate_course_total_grade(student, course):
@@ -178,12 +192,13 @@ def calculate_po_achievement(student, course, program_outcome):
     
     for mapping in mappings:
         lo = mapping.learning_outcome
-        lo_score = calculate_lo_score(student, course, lo)
-        contribution_weight = Decimal(str(mapping.contribution_weight))
-        
-        # Weight the LO score by contribution weight
-        total_weighted_score += lo_score * contribution_weight
-        total_weight += contribution_weight
+        lo_score = calculate_final_lo(student, course, lo)
+        # Only include LOs where total_contribution == 100% (lo_score is not None)
+        if lo_score is not None:
+            contribution_weight = Decimal(str(mapping.contribution_weight))
+            # Weight the LO score by contribution weight
+            total_weighted_score += lo_score * contribution_weight
+            total_weight += contribution_weight
     
     if total_weight == 0:
         return Decimal('0.00')
@@ -237,11 +252,14 @@ def get_student_course_data(student, course):
         data['total_grade'] = float(total_grade)
         data['letter_grade'] = calculate_letter_grade(total_grade)
     
-    # Calculate LO achievements
+    # Calculate LO achievements using centralized function
+    # Only include LOs where total_contribution == 100%
     learning_outcomes = LearningOutcome.objects.filter(course=course)
     for lo in learning_outcomes:
-        lo_score = calculate_lo_score(student, course, lo)
-        data['lo_achievements'][lo.code] = float(lo_score)
+        lo_score = calculate_final_lo(student, course, lo)
+        # Only add if lo_score is not None (i.e., total_contribution == 100%)
+        if lo_score is not None:
+            data['lo_achievements'][lo.code] = float(lo_score)
     
     # Calculate PO achievements
     program_outcomes = course.program_outcomes.all()
