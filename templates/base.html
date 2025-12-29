@@ -482,6 +482,22 @@
     
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+        // Helper function to wait for Chart.js to be available
+        function waitForChart(callback, maxAttempts = 50) {
+            let attempts = 0;
+            const checkChart = setInterval(function() {
+                attempts++;
+                if (typeof Chart !== 'undefined') {
+                    clearInterval(checkChart);
+                    callback();
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(checkChart);
+                    console.error('Chart.js failed to load after ' + maxAttempts + ' attempts');
+                }
+            }, 100);
+        }
+    </script>
     
     {% block extra_js %}{% endblock %}
 </body>

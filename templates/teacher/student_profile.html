@@ -212,11 +212,21 @@
                 </div>
                 <div class="comparison-info">Based on {{ comp.total_students }} student{{ comp.total_students|pluralize }} in this course</div>
                 <script>
-                (function() {
+                function initGradeChart_{{ course_data.course.id }}() {
                     const ctx = document.getElementById('gradeChart_{{ course_data.course.id }}');
-                    if (ctx) {
+                    if (!ctx) {
+                        console.error('Canvas element not found: gradeChart_{{ course_data.course.id }}');
+                        return;
+                    }
+                    
+                    waitForChart(function() {
                         const studentGrade = {{ comp.student_grade|floatformat:2 }};
                         const avgGrade = {{ comp.avg_grade|floatformat:2 }};
+                        
+                        if (isNaN(studentGrade) || isNaN(avgGrade)) {
+                            console.error('Invalid grade data for chart');
+                            return;
+                        }
                         
                         new Chart(ctx, {
                             type: 'bar',
@@ -301,8 +311,14 @@
                                 }
                             }
                         });
-                    }
-                })();
+                    });
+                }
+                
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initGradeChart_{{ course_data.course.id }});
+                } else {
+                    initGradeChart_{{ course_data.course.id }}();
+                }
                 </script>
             </div>
             {% endif %}
@@ -339,9 +355,14 @@
                 </div>
                 <div class="comparison-info">Comparing student performance with class average</div>
                 <script>
-                (function() {
+                function initLOChart_{{ course_data.course.id }}() {
                     const ctx = document.getElementById('loChart_{{ course_data.course.id }}');
-                    if (ctx) {
+                    if (!ctx) {
+                        console.error('Canvas element not found: loChart_{{ course_data.course.id }}');
+                        return;
+                    }
+                    
+                    waitForChart(function() {
                         const loLabels = [];
                         const studentData = [];
                         const avgData = [];
@@ -355,6 +376,11 @@
                         avgData.push(null);
                         {% endif %}
                         {% endfor %}
+                        
+                        if (loLabels.length === 0 || studentData.length === 0) {
+                            console.error('No LO data available for chart');
+                            return;
+                        }
                         
                         new Chart(ctx, {
                             type: 'bar',
@@ -453,8 +479,14 @@
                                 }
                             }
                         });
-                    }
-                })();
+                    });
+                }
+                
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initLOChart_{{ course_data.course.id }});
+                } else {
+                    initLOChart_{{ course_data.course.id }}();
+                }
                 </script>
             </div>
             {% endif %}
@@ -500,9 +532,14 @@
         </div>
         <div class="comparison-info">Comparing student PO values with department average</div>
         <script>
-        (function() {
+        function initPOChart() {
             const ctx = document.getElementById('poComparisonChart');
-            if (ctx) {
+            if (!ctx) {
+                console.error('Canvas element not found: poComparisonChart');
+                return;
+            }
+            
+            waitForChart(function() {
                 const poLabels = [];
                 const studentData = [];
                 const avgData = [];
@@ -520,6 +557,11 @@
                 avgData.push(null);
                 {% endif %}
                 {% endfor %}
+                
+                if (poLabels.length === 0 || studentData.length === 0) {
+                    console.error('No PO data available for chart');
+                    return;
+                }
                 
                 new Chart(ctx, {
                     type: 'bar',
@@ -618,8 +660,14 @@
                         }
                     }
                 });
-            }
-        })();
+            });
+        }
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initPOChart);
+        } else {
+            initPOChart();
+        }
         </script>
     </div>
     {% endif %}

@@ -127,11 +127,21 @@
                 </div>
                 <div class="comparison-info">Based on {{ comparison_data.total_students }} student{{ comparison_data.total_students|pluralize }} in this course</div>
                 <script>
-                (function() {
+                function initGradeComparisonChart() {
                     const ctx = document.getElementById('gradeComparisonChart');
-                    if (ctx) {
+                    if (!ctx) {
+                        console.error('Canvas element not found: gradeComparisonChart');
+                        return;
+                    }
+                    
+                    waitForChart(function() {
                         const studentGrade = {{ comparison_data.student_grade|floatformat:2 }};
                         const avgGrade = {{ comparison_data.avg_grade|floatformat:2 }};
+                        
+                        if (isNaN(studentGrade) || isNaN(avgGrade)) {
+                            console.error('Invalid grade data for chart');
+                            return;
+                        }
                         
                         new Chart(ctx, {
                             type: 'bar',
@@ -216,8 +226,14 @@
                                 }
                             }
                         });
-                    }
-                })();
+                    });
+                }
+                
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', initGradeComparisonChart);
+                } else {
+                    initGradeComparisonChart();
+                }
                 </script>
             </div>
             {% endif %}
@@ -255,9 +271,14 @@
                 <canvas id="loPerformanceChart"></canvas>
             </div>
             <script>
-            (function() {
+            function initLOPerformanceChart() {
                 const ctx = document.getElementById('loPerformanceChart');
-                if (ctx) {
+                if (!ctx) {
+                    console.error('Canvas element not found: loPerformanceChart');
+                    return;
+                }
+                
+                waitForChart(function() {
                     const loLabels = [];
                     const loValues = [];
                     
@@ -265,6 +286,11 @@
                     loLabels.push('{{ lo_code }}');
                     loValues.push({{ achievement|floatformat:2 }});
                     {% endfor %}
+                    
+                    if (loLabels.length === 0 || loValues.length === 0) {
+                        console.error('No LO performance data available for chart');
+                        return;
+                    }
                     
                     new Chart(ctx, {
                         type: 'bar',
@@ -343,8 +369,14 @@
                             }
                         }
                     });
-                }
-            })();
+                });
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initLOPerformanceChart);
+            } else {
+                initLOPerformanceChart();
+            }
             </script>
         </div>
         
@@ -356,9 +388,14 @@
             </div>
             <div class="comparison-info">Comparing your performance with class average</div>
             <script>
-            (function() {
+            function initLOComparisonChart() {
                 const ctx = document.getElementById('loComparisonChart');
-                if (ctx) {
+                if (!ctx) {
+                    console.error('Canvas element not found: loComparisonChart');
+                    return;
+                }
+                
+                waitForChart(function() {
                     const loLabels = [];
                     const studentData = [];
                     const avgData = [];
@@ -372,6 +409,11 @@
                     avgData.push(null);
                     {% endif %}
                     {% endfor %}
+                    
+                    if (loLabels.length === 0 || studentData.length === 0) {
+                        console.error('No LO comparison data available for chart');
+                        return;
+                    }
                     
                     new Chart(ctx, {
                         type: 'bar',
@@ -470,8 +512,14 @@
                             }
                         }
                     });
-                }
-            })();
+                });
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initLOComparisonChart);
+            } else {
+                initLOComparisonChart();
+            }
             </script>
         </div>
         {% endif %}
@@ -513,9 +561,14 @@
             </div>
             <div class="comparison-info">Showing how each LO contributes to this PO</div>
             <script>
-            (function() {
+            function initPOLOChart_{{ po_code }}() {
                 const ctx = document.getElementById('poLoChart_{{ po_code }}');
-                if (ctx) {
+                if (!ctx) {
+                    console.error('Canvas element not found: poLoChart_{{ po_code }}');
+                    return;
+                }
+                
+                waitForChart(function() {
                     const loLabels = [];
                     const loValues = [];
                     const contributionPcts = [];
@@ -527,6 +580,11 @@
                     contributionPcts.push({{ lo_contrib.contribution_pct|floatformat:2 }});
                     contributedValues.push({{ lo_contrib.contributed_value|floatformat:2 }});
                     {% endfor %}
+                    
+                    if (loLabels.length === 0 || loValues.length === 0) {
+                        console.error('No PO-LO contribution data available for chart');
+                        return;
+                    }
                     
                     new Chart(ctx, {
                         type: 'bar',
@@ -633,8 +691,14 @@
                             }
                         }
                     });
-                }
-            })();
+                });
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initPOLOChart_{{ po_code }});
+            } else {
+                initPOLOChart_{{ po_code }}();
+            }
             </script>
         </div>
         {% endfor %}
