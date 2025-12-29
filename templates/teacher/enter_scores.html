@@ -32,19 +32,10 @@
                                value="{% if score_obj %}{{ score_obj.score }}{% endif %}"
                                min="0" max="100" step="0.01" 
                                style="width: 80px;" required>
+                        {% if score_obj and score_obj.letter_grade %}
                         <br>
-                        <select name="letter_grade_{{ assessment.id }}_{{ enrollment.student.id }}" 
-                                style="width: 80px; margin-top: 0.25rem;">
-                            <option value="">-</option>
-                            <option value="AA" {% if score_obj and score_obj.letter_grade == 'AA' %}selected{% endif %}>AA</option>
-                            <option value="BA" {% if score_obj and score_obj.letter_grade == 'BA' %}selected{% endif %}>BA</option>
-                            <option value="BB" {% if score_obj and score_obj.letter_grade == 'BB' %}selected{% endif %}>BB</option>
-                            <option value="CB" {% if score_obj and score_obj.letter_grade == 'CB' %}selected{% endif %}>CB</option>
-                            <option value="CC" {% if score_obj and score_obj.letter_grade == 'CC' %}selected{% endif %}>CC</option>
-                            <option value="DC" {% if score_obj and score_obj.letter_grade == 'DC' %}selected{% endif %}>DC</option>
-                            <option value="DD" {% if score_obj and score_obj.letter_grade == 'DD' %}selected{% endif %}>DD</option>
-                            <option value="FF" {% if score_obj and score_obj.letter_grade == 'FF' %}selected{% endif %}>FF</option>
-                        </select>
+                        <small style="color: #666;">Grade: {{ score_obj.letter_grade }}</small>
+                        {% endif %}
                     </td>
                 {% endfor %}
             </tr>

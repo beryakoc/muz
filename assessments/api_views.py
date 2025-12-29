@@ -27,5 +27,21 @@ class AssessmentScoreViewSet(viewsets.ModelViewSet):
             # Only Teachers can enter/modify scores
             return [permissions.IsAuthenticated()]
         return [permissions.IsAuthenticated()]
+    
+    def perform_create(self, serializer):
+        """Automatically calculate letter grade when creating a score."""
+        instance = serializer.save()
+        if instance.score is not None:
+            from assessments.utils import calculate_letter_grade
+            instance.letter_grade = calculate_letter_grade(instance.score)
+            instance.save()
+    
+    def perform_update(self, serializer):
+        """Automatically calculate letter grade when updating a score."""
+        instance = serializer.save()
+        if instance.score is not None:
+            from assessments.utils import calculate_letter_grade
+            instance.letter_grade = calculate_letter_grade(instance.score)
+            instance.save()
 
 

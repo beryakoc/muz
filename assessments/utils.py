@@ -135,14 +135,14 @@ def calculate_letter_grade(numeric_grade):
     Convert numeric grade (0-100) to letter grade.
     
     Grading scale:
-    AA: 90-100
-    BA: 85-89.99
+    AA: 90+
+    AB: 85-89.99
     BB: 80-84.99
-    CB: 75-79.99
-    CC: 70-74.99
-    DC: 65-69.99
-    DD: 60-64.99
-    FF: 0-59.99
+    CB: 70-79.99
+    CC: 60-69.99
+    DC: 55-59.99
+    DD: 50-54.99
+    FF: 0-49.99
     """
     if numeric_grade is None:
         return None
@@ -152,16 +152,16 @@ def calculate_letter_grade(numeric_grade):
     if numeric_grade >= 90:
         return 'AA'
     elif numeric_grade >= 85:
-        return 'BA'
+        return 'AB'
     elif numeric_grade >= 80:
         return 'BB'
-    elif numeric_grade >= 75:
-        return 'CB'
     elif numeric_grade >= 70:
-        return 'CC'
-    elif numeric_grade >= 65:
-        return 'DC'
+        return 'CB'
     elif numeric_grade >= 60:
+        return 'CC'
+    elif numeric_grade >= 55:
+        return 'DC'
+    elif numeric_grade >= 50:
         return 'DD'
     else:
         return 'FF'

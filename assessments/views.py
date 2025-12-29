@@ -96,10 +96,8 @@ def enter_scores(request, course_id):
         for enrollment in enrollments:
             for assessment in assessments:
                 score_key = f'score_{assessment.id}_{enrollment.student.id}'
-                letter_grade_key = f'letter_grade_{assessment.id}_{enrollment.student.id}'
                 
                 score_value = request.POST.get(score_key)
-                letter_grade_value = request.POST.get(letter_grade_key, '')
                 
                 if score_value:
                     try:
@@ -111,13 +109,17 @@ def enter_scores(request, course_id):
                         # Ensure score doesn't exceed 100
                         score = min(100.0, max(0.0, score))
                         
+                        # Automatically calculate letter grade from numeric score
+                        from assessments.utils import calculate_letter_grade
+                        calculated_letter_grade = calculate_letter_grade(score)
+                        
                         # Create or update score
                         score_obj, created = AssessmentScore.objects.update_or_create(
                             assessment=assessment,
                             student=enrollment.student,
                             defaults={
                                 'score': score,
-                                'letter_grade': letter_grade_value if letter_grade_value else None
+                                'letter_grade': calculated_letter_grade
                             }
                         )
                     except Exception as e:

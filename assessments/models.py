@@ -90,7 +90,7 @@ class AssessmentScore(models.Model):
         max_length=2,
         choices=[
             ('AA', 'AA'),
-            ('BA', 'BA'),
+            ('AB', 'AB'),
             ('BB', 'BB'),
             ('CB', 'CB'),
             ('CC', 'CC'),
@@ -100,7 +100,7 @@ class AssessmentScore(models.Model):
         ],
         null=True,
         blank=True,
-        help_text="Letter grade for this assessment (optional)"
+        help_text="Letter grade for this assessment (automatically calculated)"
     )
     entered_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
