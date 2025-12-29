@@ -21,6 +21,13 @@ urlpatterns = [
     path('department-head/courses/', views.manage_courses, name='manage_courses'),
     path('department-head/courses/<int:course_id>/', views.course_detail, name='course_detail'),
     path('department-head/assign-students/', views.assign_students, name='assign_students'),
+    path('department-head/lo-po/', views.department_head_lo_po, name='department_head_lo_po'),
+    path('department-head/lo-po/los/', views.department_head_manage_los, name='department_head_manage_los'),
+    path('department-head/lo-po/los/<int:course_id>/', views.department_head_manage_los, name='department_head_manage_los'),
+    path('department-head/lo-po/pos/', views.department_head_manage_pos, name='department_head_manage_pos'),
+    path('department-head/lo-po/pos/<int:course_id>/', views.department_head_manage_pos, name='department_head_manage_pos'),
+    path('department-head/po-management/', views.department_po_management, name='department_po_management'),
+    path('department-head/po-management/<int:po_id>/los/', views.manage_po_lo_contributions, name='manage_po_lo_contributions'),
 ]
 
 

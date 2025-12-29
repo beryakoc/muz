@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Learning Outcomes - University SIS{% endblock %}
+
+{% block content %}
+<h1>Manage Learning Outcomes</h1>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #fff3cd; border-radius: 4px; border: 1px solid #ffc107;">
+    <strong>Department Head Override:</strong> You can view and modify all Learning Outcomes for any course, including those created by teachers.
+</div>
+
+<div style="margin-top: 2rem;">
+    <h2>Select a Course</h2>
+    {% if course_data %}
+    <table>
+        <thead>
+            <tr>
+                <th>Course Code</th>
+                <th>Course Name</th>
+                <th>Teacher</th>
+                <th>LO Count</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in course_data %}
+            <tr>
+                <td>{{ data.course.code }}</td>
+                <td>{{ data.course.name }}</td>
+                <td>{{ data.course.teacher.get_full_name|default:"Not assigned" }}</td>
+                <td>{{ data.lo_count }}</td>
+                <td>
+                    <a href="{% url 'department_head_manage_los' data.course.id %}" class="btn">Manage LOs</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No courses found.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'department_head_lo_po' %}" class="btn" style="margin-top: 2rem;">Back to LO / PO Management</a>
+{% endblock %}
+

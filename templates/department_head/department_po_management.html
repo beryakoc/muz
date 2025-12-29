@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}PO Management - University SIS{% endblock %}
+
+{% block content %}
+<h1>Department Program Outcomes (PO) Management</h1>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px; border: 1px solid #2196F3;">
+    <strong>Department-Level PO Management:</strong> Program Outcomes are department-wide and aggregate Learning Outcomes from all courses. Each PO is calculated as: <strong>PO = sum(LO_value × LO_percentage / 100)</strong>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h2>Add New Program Outcome</h2>
+    <form method="post" style="max-width: 600px; margin-bottom: 2rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_po">
+        <div class="form-group">
+            <label for="po_code">PO Code:</label>
+            <input type="text" name="po_code" id="po_code" required placeholder="e.g., PO1, PO2">
+        </div>
+        <div class="form-group">
+            <label for="po_description">Description:</label>
+            <textarea name="po_description" id="po_description" required rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn">Add Program Outcome</button>
+    </form>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h2>Existing Program Outcomes</h2>
+    {% if po_data %}
+    <table>
+        <thead>
+            <tr>
+                <th>PO Code</th>
+                <th>Description</th>
+                <th>LO Contributions</th>
+                <th>Total Percentage</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for data in po_data %}
+            <tr>
+                <td><strong>{{ data.po.code }}</strong></td>
+                <td>{{ data.po.description|truncatewords:20 }}</td>
+                <td>
+                    {% if data.lo_count > 0 %}
+                        {{ data.lo_count }} LO{{ data.lo_count|pluralize }}
+                    {% else %}
+                        <span style="color: #999;">No LOs assigned</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if data.total_percentage %}
+                        <span style="{% if data.total_percentage != 100 %}color: #e74c3c;{% else %}color: #27ae60;{% endif %}">
+                            {{ data.total_percentage|floatformat:2 }}%
+                        </span>
+                    {% else %}
+                        <span style="color: #999;">0%</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'manage_po_lo_contributions' data.po.id %}" class="btn btn-sm">Manage LO Contributions</a>
+                    <form method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this Program Outcome? This action cannot be undone.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_po">
+                        <input type="hidden" name="po_id" value="{{ data.po.id }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No Program Outcomes defined. Create one above to get started.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'department_head_dashboard' %}" class="btn" style="margin-top: 2rem;">Back to Dashboard</a>
+{% endblock %}
+

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from .models import Course, LearningOutcome, ProgramOutcome, LOPOMapping, Enrollment, AcademicCalendar
+from .models import Course, LearningOutcome, ProgramOutcome, LOPOMapping, Enrollment, AcademicCalendar, DepartmentProgramOutcome, DepartmentLOPOContribution
 from accounts.decorators import role_required, department_head_required, student_required, teacher_required
 from accounts.models import User
 from announcements.models import Announcement
@@ -90,10 +90,15 @@ def student_course_detail(request, course_id):
             pass
         assessments_list.append(assessment_info)
     
+    # Get department PO values for this student
+    from assessments.utils import get_student_department_pos
+    department_po_values = get_student_department_pos(request.user)
+    
     return render(request, 'student/course_detail.html', {
         'course': course,
         'course_data': course_data,
         'assessments_list': assessments_list,
+        'department_po_values': department_po_values,
     })
 
 
@@ -198,9 +203,14 @@ def teacher_student_profile(request, student_id):
         course_data = get_student_course_data(student, course)
         courses_data.append(course_data)
     
+    # Get department PO values for this student
+    from assessments.utils import get_student_department_pos
+    department_po_values = get_student_department_pos(student)
+    
     return render(request, 'teacher/student_profile.html', {
         'student': student,
         'courses_data': courses_data,
+        'department_po_values': department_po_values,
     })
 
 
@@ -424,12 +434,208 @@ def course_detail(request, course_id):
             except LearningOutcome.DoesNotExist:
                 messages.error(request, 'Learning Outcome not found.')
         
-        elif action == 'create_po':
+        return redirect('course_detail', course_id=course_id)
+    
+    learning_outcomes = LearningOutcome.objects.filter(course=course)
+    
+    return render(request, 'department_head/course_detail.html', {
+        'course': course,
+        'learning_outcomes': learning_outcomes,
+    })
+
+
+@department_head_required
+def department_head_lo_po(request):
+    """Department Head LO/PO management hub - shows tabs for LO and PO management."""
+    courses = Course.objects.all().select_related('teacher').order_by('code')
+    
+    # Get LO and PO counts per course
+    course_data = []
+    for course in courses:
+        lo_count = LearningOutcome.objects.filter(course=course).count()
+        po_count = ProgramOutcome.objects.filter(course=course).count()
+        course_data.append({
+            'course': course,
+            'lo_count': lo_count,
+            'po_count': po_count,
+        })
+    
+    return render(request, 'department_head/lo_po_management.html', {
+        'course_data': course_data,
+    })
+
+
+@department_head_required
+def department_head_manage_los(request, course_id=None):
+    """Department Head manages Learning Outcomes - can override teacher changes."""
+    if course_id:
+        course = get_object_or_404(Course, id=course_id)
+        
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            
+            if action == 'create_lo':
+                lo_code = request.POST.get('lo_code')
+                lo_description = request.POST.get('lo_description')
+                try:
+                    LearningOutcome.objects.create(
+                        course=course,
+                        code=lo_code,
+                        description=lo_description
+                    )
+                    messages.success(request, f'Learning Outcome {lo_code} created successfully.')
+                except Exception as e:
+                    messages.error(request, f'Error creating LO: {str(e)}')
+            
+            elif action == 'update_lo':
+                lo_id = request.POST.get('lo_id')
+                lo_code = request.POST.get('lo_code')
+                lo_description = request.POST.get('lo_description')
+                try:
+                    lo = LearningOutcome.objects.get(id=lo_id, course=course)
+                    lo.code = lo_code
+                    lo.description = lo_description
+                    lo.save()
+                    messages.success(request, f'Learning Outcome {lo_code} updated successfully.')
+                except LearningOutcome.DoesNotExist:
+                    messages.error(request, 'Learning Outcome not found.')
+                except Exception as e:
+                    messages.error(request, f'Error updating LO: {str(e)}')
+            
+            elif action == 'delete_lo':
+                lo_id = request.POST.get('lo_id')
+                try:
+                    lo = LearningOutcome.objects.get(id=lo_id, course=course)
+                    lo.delete()
+                    messages.success(request, 'Learning Outcome deleted successfully.')
+                except LearningOutcome.DoesNotExist:
+                    messages.error(request, 'Learning Outcome not found.')
+            
+            return redirect('department_head_manage_los', course_id=course_id)
+        
+        learning_outcomes = LearningOutcome.objects.filter(course=course).order_by('code')
+        
+        # Get contribution info for each LO
+        from assessments.models import AssessmentLOContribution
+        lo_contributions = {}
+        for lo in learning_outcomes:
+            contributions = AssessmentLOContribution.objects.filter(learning_outcome=lo)
+            lo_contributions[lo.id] = {
+                'count': contributions.count(),
+                'total_percentage': sum(float(c.contribution_percentage) for c in contributions)
+            }
+        
+        return render(request, 'department_head/manage_los.html', {
+            'course': course,
+            'learning_outcomes': learning_outcomes,
+            'lo_contributions': lo_contributions,
+        })
+    
+    # List all courses
+    courses = Course.objects.all().select_related('teacher').order_by('code')
+    course_data = []
+    for course in courses:
+        lo_count = LearningOutcome.objects.filter(course=course).count()
+        course_data.append({
+            'course': course,
+            'lo_count': lo_count,
+        })
+    
+    return render(request, 'department_head/manage_los_list.html', {
+        'course_data': course_data,
+    })
+
+
+@department_head_required
+def department_head_manage_pos(request, course_id=None):
+    """Department Head manages Program Outcomes - can override teacher changes."""
+    if course_id:
+        course = get_object_or_404(Course, id=course_id)
+        
+        if request.method == 'POST':
+            action = request.POST.get('action')
+            
+            if action == 'create_po':
+                po_code = request.POST.get('po_code')
+                po_description = request.POST.get('po_description')
+                try:
+                    ProgramOutcome.objects.create(
+                        course=course,
+                        code=po_code,
+                        description=po_description
+                    )
+                    messages.success(request, f'Program Outcome {po_code} created successfully.')
+                except Exception as e:
+                    messages.error(request, f'Error creating PO: {str(e)}')
+            
+            elif action == 'update_po':
+                po_id = request.POST.get('po_id')
+                po_code = request.POST.get('po_code')
+                po_description = request.POST.get('po_description')
+                try:
+                    po = ProgramOutcome.objects.get(id=po_id, course=course)
+                    po.code = po_code
+                    po.description = po_description
+                    po.save()
+                    messages.success(request, f'Program Outcome {po_code} updated successfully.')
+                except ProgramOutcome.DoesNotExist:
+                    messages.error(request, 'Program Outcome not found.')
+                except Exception as e:
+                    messages.error(request, f'Error updating PO: {str(e)}')
+            
+            elif action == 'delete_po':
+                po_id = request.POST.get('po_id')
+                try:
+                    po = ProgramOutcome.objects.get(id=po_id, course=course)
+                    po.delete()
+                    messages.success(request, 'Program Outcome deleted successfully.')
+                except ProgramOutcome.DoesNotExist:
+                    messages.error(request, 'Program Outcome not found.')
+            
+            return redirect('department_head_manage_pos', course_id=course_id)
+        
+        program_outcomes = ProgramOutcome.objects.filter(course=course).order_by('code')
+        
+        # Get mapping info for each PO
+        po_mappings = {}
+        for po in program_outcomes:
+            mappings = LOPOMapping.objects.filter(program_outcome=po)
+            po_mappings[po.id] = mappings.count()
+        
+        return render(request, 'department_head/manage_pos.html', {
+            'course': course,
+            'program_outcomes': program_outcomes,
+            'po_mappings': po_mappings,
+        })
+    
+    # List all courses
+    courses = Course.objects.all().select_related('teacher').order_by('code')
+    course_data = []
+    for course in courses:
+        po_count = ProgramOutcome.objects.filter(course=course).count()
+        course_data.append({
+            'course': course,
+            'po_count': po_count,
+        })
+    
+    return render(request, 'department_head/manage_pos_list.html', {
+        'course_data': course_data,
+    })
+
+
+@department_head_required
+def department_po_management(request):
+    """Department Head manages department-level Program Outcomes."""
+    department_pos = DepartmentProgramOutcome.objects.all().order_by('order', 'code')
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'create_po':
             po_code = request.POST.get('po_code')
             po_description = request.POST.get('po_description')
             try:
-                ProgramOutcome.objects.create(
-                    course=course,
+                DepartmentProgramOutcome.objects.create(
                     code=po_code,
                     description=po_description
                 )
@@ -437,51 +643,118 @@ def course_detail(request, course_id):
             except Exception as e:
                 messages.error(request, f'Error creating PO: {str(e)}')
         
+        elif action == 'update_po':
+            po_id = request.POST.get('po_id')
+            po_code = request.POST.get('po_code')
+            po_description = request.POST.get('po_description')
+            try:
+                po = DepartmentProgramOutcome.objects.get(id=po_id)
+                po.code = po_code
+                po.description = po_description
+                po.save()
+                messages.success(request, f'Program Outcome {po_code} updated successfully.')
+            except DepartmentProgramOutcome.DoesNotExist:
+                messages.error(request, 'Program Outcome not found.')
+            except Exception as e:
+                messages.error(request, f'Error updating PO: {str(e)}')
+        
         elif action == 'delete_po':
             po_id = request.POST.get('po_id')
             try:
-                po = ProgramOutcome.objects.get(id=po_id, course=course)
+                po = DepartmentProgramOutcome.objects.get(id=po_id)
                 po.delete()
                 messages.success(request, 'Program Outcome deleted successfully.')
-            except ProgramOutcome.DoesNotExist:
+            except DepartmentProgramOutcome.DoesNotExist:
                 messages.error(request, 'Program Outcome not found.')
         
-        elif action == 'create_mapping':
-            lo_id = request.POST.get('mapping_lo')
-            po_id = request.POST.get('mapping_po')
-            contribution_weight = request.POST.get('contribution_weight')
-            try:
-                lo = LearningOutcome.objects.get(id=lo_id, course=course)
-                po = ProgramOutcome.objects.get(id=po_id, course=course)
-                LOPOMapping.objects.create(
-                    learning_outcome=lo,
-                    program_outcome=po,
-                    contribution_weight=contribution_weight
-                )
-                messages.success(request, 'LO-PO mapping created successfully.')
-            except Exception as e:
-                messages.error(request, f'Error creating mapping: {str(e)}')
-        
-        elif action == 'delete_mapping':
-            mapping_id = request.POST.get('mapping_id')
-            try:
-                mapping = LOPOMapping.objects.get(id=mapping_id)
-                mapping.delete()
-                messages.success(request, 'LO-PO mapping deleted successfully.')
-            except LOPOMapping.DoesNotExist:
-                messages.error(request, 'Mapping not found.')
-        
-        return redirect('course_detail', course_id=course_id)
+        return redirect('department_po_management')
     
-    learning_outcomes = LearningOutcome.objects.filter(course=course)
-    program_outcomes = ProgramOutcome.objects.filter(course=course)
-    lo_po_mappings = LOPOMapping.objects.filter(
-        learning_outcome__course=course
-    ).select_related('learning_outcome', 'program_outcome')
+    # Get contribution info for each PO
+    po_data = []
+    for po in department_pos:
+        contributions = DepartmentLOPOContribution.objects.filter(department_program_outcome=po)
+        total_percentage = sum(float(c.contribution_percentage) for c in contributions)
+        po_data.append({
+            'po': po,
+            'lo_count': contributions.count(),
+            'total_percentage': total_percentage,
+        })
     
-    return render(request, 'department_head/course_detail.html', {
-        'course': course,
-        'learning_outcomes': learning_outcomes,
-        'program_outcomes': program_outcomes,
-        'lo_po_mappings': lo_po_mappings,
+    return render(request, 'department_head/department_po_management.html', {
+        'po_data': po_data,
+    })
+
+
+@department_head_required
+def manage_po_lo_contributions(request, po_id):
+    """Department Head manages LO contributions for a department PO."""
+    po = get_object_or_404(DepartmentProgramOutcome, id=po_id)
+    
+    # Get all LOs from all courses
+    all_los = LearningOutcome.objects.all().select_related('course').order_by('course__code', 'code')
+    
+    # Get existing contributions for this PO
+    existing_contributions = DepartmentLOPOContribution.objects.filter(
+        department_program_outcome=po
+    ).select_related('learning_outcome', 'learning_outcome__course')
+    
+    # Create a dict for quick lookup
+    contribution_dict = {contrib.learning_outcome.id: contrib for contrib in existing_contributions}
+    
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        if action == 'save_contributions':
+            # Delete all existing contributions
+            existing_contributions.delete()
+            
+            # Get all LO IDs and percentages from form
+            lo_ids = request.POST.getlist('lo_id')
+            percentages = request.POST.getlist('percentage')
+            
+            # Validate total percentage
+            total_percentage = sum(float(p) for p in percentages if p)
+            
+            if abs(total_percentage - 100.0) > 0.01:
+                messages.error(request, f'Total contribution percentage must equal 100%. Current total: {total_percentage:.2f}%')
+                return redirect('manage_po_lo_contributions', po_id=po_id)
+            
+            # Create new contributions
+            for lo_id, percentage in zip(lo_ids, percentages):
+                if lo_id and percentage and float(percentage) > 0:
+                    try:
+                        lo = LearningOutcome.objects.get(id=lo_id)
+                        DepartmentLOPOContribution.objects.create(
+                            learning_outcome=lo,
+                            department_program_outcome=po,
+                            contribution_percentage=float(percentage)
+                        )
+                    except LearningOutcome.DoesNotExist:
+                        continue
+                    except Exception as e:
+                        messages.error(request, f'Error creating contribution: {str(e)}')
+            
+            messages.success(request, f'LO contributions for {po.code} saved successfully.')
+            return redirect('manage_po_lo_contributions', po_id=po_id)
+        
+        elif action == 'remove_contribution':
+            contrib_id = request.POST.get('contrib_id')
+            try:
+                contrib = DepartmentLOPOContribution.objects.get(id=contrib_id, department_program_outcome=po)
+                contrib.delete()
+                messages.success(request, 'Contribution removed successfully.')
+            except DepartmentLOPOContribution.DoesNotExist:
+                messages.error(request, 'Contribution not found.')
+            
+            return redirect('manage_po_lo_contributions', po_id=po_id)
+    
+    # Calculate total percentage
+    total_percentage = sum(float(c.contribution_percentage) for c in existing_contributions)
+    
+    return render(request, 'department_head/manage_po_lo_contributions.html', {
+        'po': po,
+        'all_los': all_los,
+        'existing_contributions': existing_contributions,
+        'contribution_dict': contribution_dict,
+        'total_percentage': total_percentage,
     })

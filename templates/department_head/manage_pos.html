@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% load assessment_tags %}
+
+{% block title %}Manage Program Outcomes - {{ course.code }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>Manage Program Outcomes - {{ course.code }} - {{ course.name }}</h1>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #fff3cd; border-radius: 4px; border: 1px solid #ffc107;">
+    <strong>Department Head Override:</strong> You can view, create, edit, and delete all Program Outcomes for this course, including those created by teachers.
+</div>
+
+<div style="margin-top: 2rem;">
+    <h2>Add New Program Outcome</h2>
+    <form method="post" style="max-width: 600px; margin-bottom: 2rem;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="create_po">
+        <div class="form-group">
+            <label for="po_code">PO Code:</label>
+            <input type="text" name="po_code" id="po_code" required placeholder="e.g., PO1, PO2">
+        </div>
+        <div class="form-group">
+            <label for="po_description">Description:</label>
+            <textarea name="po_description" id="po_description" required rows="4"></textarea>
+        </div>
+        <button type="submit" class="btn">Add Program Outcome</button>
+    </form>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h2>Existing Program Outcomes</h2>
+    {% if program_outcomes %}
+    <table>
+        <thead>
+            <tr>
+                <th>PO Code</th>
+                <th>Description</th>
+                <th>LO Mappings</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for po in program_outcomes %}
+            <tr>
+                <td><strong>{{ po.code }}</strong></td>
+                <td>{{ po.description|truncatewords:20 }}</td>
+                <td>
+                    {% with mapping_count=po_mappings|get_item:po.id %}
+                    {% if mapping_count %}
+                        {{ mapping_count }} mapping{{ mapping_count|pluralize }}
+                    {% else %}
+                        <span style="color: #999;">No LO mappings</span>
+                    {% endif %}
+                    {% endwith %}
+                </td>
+                <td>
+                    <form method="post" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this Program Outcome? This action cannot be undone.');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_po">
+                        <input type="hidden" name="po_id" value="{{ po.id }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No Program Outcomes defined for this course.</p>
+    {% endif %}
+</div>
+
+<a href="{% url 'department_head_manage_pos' %}" class="btn" style="margin-top: 2rem;">Back to Course List</a>
+<a href="{% url 'department_head_lo_po' %}" class="btn" style="margin-top: 2rem;">Back to LO / PO Management</a>
+{% endblock %}
+

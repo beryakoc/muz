@@ -84,6 +84,29 @@
     </div>
 </div>
 
+{% if department_po_values %}
+<div style="margin-top: 3rem; padding: 1.5rem; background-color: #f8f9fa; border-radius: 8px;">
+    <h2>Department Program Outcomes (PO)</h2>
+    <p style="color: #666; margin-bottom: 1rem;">These values are calculated across all courses using the formula: PO = sum(LO_value × LO_percentage / 100)</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Program Outcome</th>
+                <th>Final PO Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for po_code, po_value in department_po_values.items %}
+            <tr>
+                <td><strong>{{ po_code }}</strong></td>
+                <td>{{ po_value|floatformat:2 }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 <a href="{% url 'student_my_courses' %}" class="btn" style="margin-top: 2rem;">Back to My Courses</a>
 {% endblock %}
 

@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+{% load assessment_tags %}
+
+{% block title %}Manage LO Contributions - {{ po.code }} - University SIS{% endblock %}
+
+{% block content %}
+<h1>Manage LO Contributions for {{ po.code }}</h1>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: #e7f3ff; border-radius: 4px; border: 1px solid #2196F3;">
+    <strong>Formula:</strong> PO = sum(LO_value × LO_percentage / 100)<br>
+    <strong>Example:</strong> If LO1=80, LO2=70, LO3=90 and contributions are 40%, 30%, 30%, then PO = 80×0.4 + 70×0.3 + 90×0.3 = 32 + 21 + 27 = 80
+</div>
+
+<div style="margin-bottom: 1rem; padding: 1rem; background-color: {% if total_percentage == 100 %}#d4edda{% else %}#fff3cd{% endif %}; border-radius: 4px; border: 1px solid {% if total_percentage == 100 %}#28a745{% else %}#ffc107{% endif %};">
+    <strong>Total Contribution:</strong> <span style="font-size: 1.2em; font-weight: bold;">{{ total_percentage|floatformat:2 }}%</span>
+    {% if total_percentage != 100 %}
+        <span style="color: #e74c3c;">⚠️ Must equal 100%</span>
+    {% else %}
+        <span style="color: #27ae60;">✓ Valid</span>
+    {% endif %}
+</div>
+
+{% if existing_contributions %}
+<div style="margin-top: 2rem;">
+    <h2>Current LO Contributions</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>LO Code</th>
+                <th>LO Description</th>
+                <th>Contribution %</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contrib in existing_contributions %}
+            <tr>
+                <td>{{ contrib.learning_outcome.course.code }}</td>
+                <td><strong>{{ contrib.learning_outcome.code }}</strong></td>
+                <td>{{ contrib.learning_outcome.description|truncatewords:15 }}</td>
+                <td>{{ contrib.contribution_percentage }}%</td>
+                <td>
+                    <form method="post" style="display: inline;" onsubmit="return confirm('Remove this LO contribution?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="remove_contribution">
+                        <input type="hidden" name="contrib_id" value="{{ contrib.id }}">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <h2>Add/Update LO Contributions</h2>
+    <p>Select Learning Outcomes and assign percentage contributions. Total must equal 100%.</p>
+    
+    <form method="post" id="contributions-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save_contributions">
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Course</th>
+                    <th>LO Code</th>
+                    <th>LO Description</th>
+                    <th>Contribution %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lo in all_los %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="lo_selected" value="{{ lo.id }}" 
+                               {% if lo.id in contribution_dict %}checked{% endif %}
+                               onchange="togglePercentageInput(this)">
+                    </td>
+                    <td>{{ lo.course.code }}</td>
+                    <td><strong>{{ lo.code }}</strong></td>
+                    <td>{{ lo.description|truncatewords:15 }}</td>
+                    <td>
+                        <input type="hidden" name="lo_id" value="{{ lo.id }}">
+                        {% with contrib=contribution_dict|get_item:lo.id %}
+                        <input type="number" 
+                               name="percentage" 
+                               step="0.01" 
+                               min="0" 
+                               max="100" 
+                               value="{% if contrib %}{{ contrib.contribution_percentage }}{% else %}0{% endif %}"
+                               style="width: 80px;"
+                               disabled
+                               id="percentage-{{ lo.id }}">
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div style="margin-top: 1rem;">
+            <button type="submit" class="btn">Save Contributions</button>
+            <button type="button" class="btn" onclick="calculateTotal()">Calculate Total</button>
+            <span id="total-display" style="margin-left: 1rem; font-weight: bold;"></span>
+        </div>
+    </form>
+</div>
+
+<script>
+function togglePercentageInput(checkbox) {
+    const loId = checkbox.value;
+    const input = document.getElementById('percentage-' + loId);
+    input.disabled = !checkbox.checked;
+    if (!checkbox.checked) {
+        input.value = '0';
+    }
+}
+
+function calculateTotal() {
+    const form = document.getElementById('contributions-form');
+    const percentages = form.querySelectorAll('input[name="percentage"]:not([disabled])');
+    let total = 0;
+    percentages.forEach(input => {
+        if (input.value) {
+            total += parseFloat(input.value) || 0;
+        }
+    });
+    const display = document.getElementById('total-display');
+    display.textContent = 'Total: ' + total.toFixed(2) + '%';
+    if (Math.abs(total - 100) < 0.01) {
+        display.style.color = '#27ae60';
+    } else {
+        display.style.color = '#e74c3c';
+    }
+}
+
+// Enable inputs for checked checkboxes on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('input[name="lo_selected"]:checked');
+    checkboxes.forEach(cb => togglePercentageInput(cb));
+});
+</script>
+
+<a href="{% url 'department_po_management' %}" class="btn" style="margin-top: 2rem;">Back to PO Management</a>
+{% endblock %}
+

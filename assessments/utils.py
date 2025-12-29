@@ -1,6 +1,6 @@
 from decimal import Decimal, ROUND_HALF_UP
 from django.db.models import Sum, Q
-from courses.models import Course, LearningOutcome, LOPOMapping
+from courses.models import Course, LearningOutcome, LOPOMapping, DepartmentProgramOutcome, DepartmentLOPOContribution
 from assessments.models import Assessment, AssessmentScore, AssessmentLOContribution
 
 
@@ -210,6 +210,86 @@ def calculate_po_achievement(student, course, program_outcome):
     po_value = max(Decimal('0.00'), min(Decimal('100.00'), po_value))
     
     return po_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def calculate_department_po(student, department_program_outcome):
+    """
+    Calculate department-level PO value for a student based on LO contributions.
+    
+    Formula: PO_final_value = sum(selected_LO_student_value × LO_percentage_for_PO / 100)
+    
+    Example:
+    - Student LO1 = 80, contribution to PO1 = 40% → 32
+    - Student LO2 = 70, contribution to PO1 = 30% → 21
+    - Student LO3 = 90, contribution to PO1 = 30% → 27
+    - PO1 final value = 32 + 21 + 27 = 80
+    
+    Business Rules:
+    - Aggregates LO values from all courses where the student is enrolled
+    - Only includes LOs where total_contribution == 100% (valid LO scores)
+    - Returns None if no valid LO contributions exist
+    
+    Returns: Decimal between 0 and 100, or None if no valid contributions
+    """
+    # Get all LO-PO contributions for this department PO
+    contributions = DepartmentLOPOContribution.objects.filter(
+        department_program_outcome=department_program_outcome
+    ).select_related('learning_outcome', 'learning_outcome__course')
+    
+    if not contributions.exists():
+        return None
+    
+    # Calculate PO value: sum(LO_value × contribution_percentage / 100)
+    po_value = Decimal('0.00')
+    valid_lo_count = 0
+    
+    # Get all courses where student is enrolled
+    from courses.models import Enrollment
+    enrolled_courses = Enrollment.objects.filter(student=student).values_list('course', flat=True)
+    
+    for contrib in contributions:
+        lo = contrib.learning_outcome
+        course = lo.course
+        
+        # Only calculate if student is enrolled in the course
+        if course.id not in enrolled_courses:
+            continue
+        
+        # Get LO score for this student in this course
+        lo_score = calculate_final_lo(student, course, lo)
+        
+        # Only include LOs where total_contribution == 100% (lo_score is not None)
+        if lo_score is not None:
+            contribution_pct = Decimal(str(contrib.contribution_percentage))
+            # Calculate: LO_value × contribution_percentage / 100
+            po_value += lo_score * (contribution_pct / Decimal('100'))
+            valid_lo_count += 1
+    
+    # Return None if no valid LO contributions
+    if valid_lo_count == 0:
+        return None
+    
+    # Ensure result is between 0 and 100
+    po_value = max(Decimal('0.00'), min(Decimal('100.00'), po_value))
+    
+    return po_value.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+
+def get_student_department_pos(student):
+    """
+    Get all department PO values for a student.
+    
+    Returns: dict with PO code as key and calculated value as value
+    """
+    department_pos = DepartmentProgramOutcome.objects.all().order_by('order', 'code')
+    po_values = {}
+    
+    for po in department_pos:
+        po_value = calculate_department_po(student, po)
+        if po_value is not None:
+            po_values[po.code] = float(po_value)
+    
+    return po_values
 
 
 def get_student_course_data(student, course):
